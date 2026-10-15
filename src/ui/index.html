@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light dark; --page-background: #f8fafc; --ink: #172343; --muted: #8290ab; --line: #e3eaf5; --blue: #2563eb; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; font: 14px system-ui, sans-serif; color: var(--ink); background: var(--page-background); }
+  @media (prefers-color-scheme: dark) {
+    :root { --page-background: #111827; }
+    :root .header { --header-ink: #f1f5f9; --header-muted: #aab7cc; --header-control: #1f2937; --header-line: #374151; }
+  }
+  .header { color: var(--header-ink, var(--ink)); }
+  .header .intro, .header .summary, .header .select-field span { color: var(--header-muted, #64748b); }
+  .header button, .header .select-field select { color: var(--header-ink, var(--ink)); background: var(--header-control, #fff); border-color: var(--header-line, var(--line)); }
+  button, select, input { font: inherit; }
+  button, select { color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  button { cursor: pointer; }
+  button:disabled { opacity: .35; cursor: default; }
+  button:focus-visible, select:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  button:hover:not(:disabled) { background: #f1f5ff; }
+  h1, h2, p, figure { margin: 0; }
+  h1 { font-size: clamp(24px, 2.5vw, 34px); letter-spacing: -.8px; line-height: 1.2; }
+  h2 { font-size: 18px; letter-spacing: -.35px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 6px 24px; margin-bottom: 20px; }
+  .header h1 { grid-column: 1 / -1; }
+  .intro { grid-column: 1; grid-row: 2; margin-top: 0; color: #64748b; font-size: 13px; line-height: 1.5; }
+  .intro a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+  .summary { grid-column: 1; grid-row: 3; line-height: 1.5; white-space: nowrap; overflow-x: auto; }
+  .layer-controls { display: flex; align-items: end; gap: 10px; flex-shrink: 0; }
+  .select-field { display: flex; flex-direction: column; gap: 5px; }
+  .select-field span { font-size: 12px; color: #64748b; }
+  .select-field select { width: 149px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; height: 38px; background: #fff; }
+  .layer-controls .icon { height: 38px; }
+  .select-field.layer select { width: 184px; }
+  .icon { width: 42px; height: 42px; display: inline-flex; justify-content: center; align-items: center; flex-shrink: 0; }
+  .icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .panel { color-scheme: light; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+  .hero { padding: 20px 20px 12px; margin-bottom: 16px; }
+  .architecture-row { display: grid; grid-template-columns: var(--hero-image-size, 96px) minmax(0, 1fr) var(--hero-image-size, 96px); align-items: start; gap: 0; }
+  .hero figure { text-align: center; align-self: start; margin-top: var(--hero-image-top, 0px); }
+  .hero figcaption { font-size: 12px; font-weight: 600; margin-top: 8px; }
+  .hero figcaption span { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 3px; }
+  .hero figure img { width: var(--hero-image-size, 96px); height: var(--hero-image-size, 96px); border-radius: 4px; display: block; }
+  .input-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+  .example-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 108px; overflow-y: auto; scrollbar-width: thin; padding: 3px; }
+  .example-list button { padding: 0; border: 0; background: transparent; border-radius: 4px; }
+  .hero .example-list img { width: 100%; height: auto; aspect-ratio: 1; border-radius: 3px; }
+  .example-list button img { opacity: .45; transition: opacity 150ms ease; }
+  .example-list button[aria-pressed="true"] img { opacity: 1; }
+  .example-list-fade { position: relative; margin-top: 12px; }
+  .example-list-fade::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 22px; background: linear-gradient(to bottom, rgba(255,255,255,0), #fff); pointer-events: none; }
+  .upload-button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 7px 3px; font-size: 10px; white-space: nowrap; }
+  .upload-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; flex-shrink: 0; }
+  .input-actions .icon { flex: 1; max-width: 36px; width: 28px; height: 30px; }
+  #diagram { width: 100%; }
+  #diagram:empty { aspect-ratio: 2900 / 1120; display: grid; place-items: center; background: #eef2f7; border-radius: 6px; color: var(--muted); font-size: 12px; }
+  #diagram:empty::before { content: "Loading architecture…"; }
+  img { background: #eef2f7; }
+  .loading #preview, .selection-cleared #preview { outline: none; }
+  .loading .colorbar { visibility: hidden; }
+  .loading .grid-scroll::before { content: "Loading feature maps…"; display: block; text-align: center; color: var(--muted); padding: 24px; font-size: 12px; }
+  #diagram svg { display: block; width: 100%; height: auto; }
+  #diagram [role="button"] { cursor: pointer; }
+  #diagram .stack, #diagram .operation { transition: opacity 160ms ease; }
+  #diagram [data-occluded="true"] { opacity: .22 !important; }
+  .stage-note a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+  .stage-note { margin-top: 9px; font-size: 11px; color: #7a879e; min-height: 17px; line-height: 1.5; }
+  .workspace { display: grid; grid-template-columns: minmax(210px, 260px) minmax(0, 1fr); gap: 14px; }
+  .workspace > .panel { height: var(--workspace-height, 300px); padding: 12px 18px 18px; min-width: 0; }
+  .selected-panel { display: flex; flex-direction: column; }
+  #selected-heading { text-align: center; }
+  .maps-heading > div:first-child { text-align: left; }
+  #diagram .hover-face { cursor: pointer; transition: transform 220ms cubic-bezier(.22,1,.36,1); }
+  #diagram .hover-face .feature-plane { transform: matrix(var(--plane-x), var(--plane-skew), 0, var(--plane-y), 0, 0); transition: transform 140ms cubic-bezier(.22,1,.36,1); }
+  #diagram .hover-face[data-facing="true"] .feature-plane { transform: matrix(var(--face-scale), 0, 0, var(--face-scale), 0, var(--face-top)); }
+  #diagram .hover-face .face-border { stroke: #f97316; stroke-width: 1.5; }
+  .selected-panel .muted { margin-top: 7px; text-align: center; }
+  .selected-content { --preview-size: clamp(104px, calc(var(--workspace-height, 300px) - 154px), 144px); flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 0 0; }
+  .preview { position: relative; margin: 0 0 16px; min-width: 0; width: var(--preview-size); flex-shrink: 0; }
+  .preview-image { position: relative; }
+  #preview { display: block; width: var(--preview-size); height: var(--preview-size); aspect-ratio: 1; object-fit: contain; image-rendering: pixelated; outline: 2px solid #f97316; outline-offset: 0; }
+  #selected-info { position: absolute; top: 100%; width: 100%; margin-top: 4px; font-size: 8px; color: var(--muted); text-align: center; }
+  .colorbar { width: min(180px, 100%); flex-shrink: 0; }
+  .scale-body { display: block; }
+  #color-strip { width: 100%; height: 8px; border: 1px solid #dbe2ed; border-radius: 2px; }
+  .color-ticks { display: flex; justify-content: space-between; margin-top: 2px; font-size: 9px; line-height: 10px; color: #64748b; }
+  #color-caption { margin-top: 2px; font-size: 9px; line-height: 10px; text-align: center; color: #8290ab; }
+  .activation-control { display: flex; align-items: center; width: 180px; height: 38px; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 8px; background: #f8fafc; flex-shrink: 0; }
+  .activation-control button { flex: 1; height: 32px; padding: 0 5px; border: 1px solid transparent; border-radius: 5px; background: transparent; font-size: 11px; color: #64748b; white-space: nowrap; transition: background 120ms ease, color 120ms ease; }
+  .activation-control button[aria-pressed="true"] { background: #eef4ff; color: #2563eb; border-color: #b6ccff; font-weight: 600; }
+  #activation-output { width: 100%; text-align: center; font-size: 11px; color: #8290ab; }
+  .channel-navigation .icon { width: 30px; height: 28px; }
+  .channel-navigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .channel-navigation span { color: var(--muted); font-size: 12px; }
+  .maps-panel { display: flex; flex-direction: column; }
+  .maps-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; margin-bottom: 6px; }
+  .maps-tools { display: flex; align-items: end; gap: 12px; }
+  .maps-tools .layer-controls { gap: 6px; }
+  .maps-tools .select-field select { width: 124px; height: 34px; font-size: 12px; }
+  .maps-tools .select-field.layer select { width: 170px; }
+  .maps-tools .layer-controls .icon { width: 34px; height: 34px; }
+  .maps-heading > div:first-child { min-width: 0; align-self: start; }
+  #maps-info { white-space: nowrap; }
+  @media (max-width: 1200px) { .maps-heading { grid-template-columns: minmax(0, 1fr); } .maps-tools { flex-wrap: wrap; } }
+  .maps-heading .muted { margin-top: 3px; font-size: 12px; }
+  .size-control { display: flex; align-items: center; gap: 6px; font-size: 10px; white-space: nowrap; }
+  .size-buttons { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 7px; }
+  .size-buttons button { border: 0; width: 36px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; background: transparent; color: #94a3b8; }
+  .size-buttons svg { width: 22px; height: 22px; fill: currentColor; }
+  .size-buttons button[aria-pressed="true"] { color: var(--blue); background: #eef4ff; box-shadow: inset 0 0 0 1px #b6ccff; }
+  .grid-viewport { position: relative; flex: 1; min-height: 0; }
+  .grid-viewport::after { content: ''; position: absolute; bottom: 0; left: 0; right: 12px; height: 25px; background: linear-gradient(to bottom, rgba(255,255,255,0), #fff); pointer-events: none; opacity: 0; }
+  .grid-viewport[data-overflow="true"]::after { opacity: 1; }
+  .grid-scroll { height: 100%; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #cdd6e5 transparent; overscroll-behavior: contain; }
+  .channels { display: grid; grid-template-columns: repeat(auto-fill, var(--tile-size)); justify-content: center; align-content: start; gap: 4px 6px; padding: 6px 4px; }
+  .channels.uniform { grid-template-columns: repeat(16, minmax(0, 1fr)); column-gap: 4px; }
+  .channels.uniform .channel { width: 100%; min-width: 0; }
+  .channels.uniform .channel img { width: 100%; max-width: 64px; height: auto; aspect-ratio: 1; margin: 0 auto; }
+  @media (max-width: 900px) { .channels.uniform { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @media (max-width: 650px) { .channels.uniform { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .channel { width: var(--tile-size); padding: 2px; background: transparent; border: 0; border-radius: 3px; position: relative; }
+  .channel img { display: block; width: var(--map-size); height: var(--map-size); image-rendering: pixelated; border-radius: 2px; transition: transform 180ms ease, box-shadow 180ms ease; }
+  .channel .number { display: block; font-size: 10px; line-height: 14px; margin-top: 3px; color: #8290ab; }
+  .channel[aria-pressed="true"] img { outline: 2px solid #f97316; outline-offset: 0; }
+  .channel[aria-pressed="true"] .number { color: #c2410c; font-weight: 600; }
+  .channel:hover, .channel:focus-visible { z-index: 2; background: transparent !important; }
+  .channel:hover img, .channel:focus-visible img { transform: scale(1.3); box-shadow: 0 4px 14px rgba(23,35,67,.18); }
+  .overlay-control { display: flex; align-items: center; gap: 9px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+  .switch { appearance: none; width: 34px; height: 20px; border-radius: 20px; background: #b9c2d0; position: relative; cursor: pointer; margin: 0; transition: background 150ms ease; }
+  .switch::after { content: ''; width: 14px; height: 14px; background: #fff; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: transform 180ms ease, box-shadow 180ms ease; }
+  .switch:checked { background: var(--blue); }
+  .switch:checked::after { transform: translateX(14px); }
+  .opacity-control { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 110px; font-size: 11px; color: var(--muted); }
+  #opacity { width: 100%; min-width: 60px; accent-color: var(--blue); cursor: pointer; }
+  #status { font-size: 11px; color: var(--muted); text-align: center; min-height: 15px; margin-top: 3px; }
+  @media (max-width: 1100px) {
+    .header { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .intro { grid-column: 1; grid-row: 2; margin-top: 0; color: #64748b; font-size: 13px; line-height: 1.5; }
+  .intro a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+  .summary { grid-column: 1; grid-row: 3; }
+    .layer-controls { grid-column: 1; grid-row: 4; }
+    .size-control > span { display: none; }
+  }
+  @media (max-width: 650px) {
+    .layer-controls { width: 100%; gap: 6px; }
+    .select-field { flex: 1; min-width: 0; padding: 6px; }
+    .select-field select, .select-field.layer select { width: 100%; font-size: 12px; }
+    .layer-controls .icon { width: 34px; }
+    .maps-tools { width: 100%; max-width: 100%; }
+    .maps-tools .select-field select, .maps-tools .select-field.layer select { width: 100%; }
+    .hero { padding: 12px; }
+    .input-actions { gap: 4px; }
+    .input-actions .icon { width: 28px; }
+    .workspace { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+
+  .diagram-footer { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 32px; margin-top: 9px; }
+  .diagram-footer .stage-note { margin-top: 0; }
+  .forward-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: #64748b; font-size: 11px; }
+  #forward-progress { display: inline-block; width: 130px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .forward-controls .icon { width: 30px; height: 28px; }
+  #forward-toggle[aria-label="Replay forward pass"] { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+  #forward-toggle[aria-label="Replay forward pass"]:hover { background: #bbf7d0; border-color: #86efac; }
+  .forward-preparing #diagram .stack, .forward-preparing #diagram .operation, .forward-preparing #hero-prediction { opacity: 0 !important; }
+  #diagram .stack[data-forward-current="true"] .stack-frame { stroke: #f59e0b; opacity: 1; }
+  .forward-playing #diagram .stack, .forward-playing #diagram .operation { pointer-events: none; }
+  @media (max-width: 650px) { .diagram-footer { align-items: flex-start; flex-wrap: wrap; } }
+
+  .output-column { display: flex; flex-direction: column; align-self: stretch; min-width: 0; padding-top: var(--hero-image-top, 0px); gap: 24px; }
+  .output-column figure { margin: 0; }
+  .output-comparison { display: grid; margin-top: auto; padding-bottom: 8px; }
+  .output-controls { display: flex; align-items: center; gap: 16px; width: 220px; max-width: 100%; flex-shrink: 0; margin-left: auto; }
+  .output-controls .overlay-control { gap: 5px; font-size: 10px; }
+  .output-controls .switch { flex-shrink: 0; width: 26px; height: 16px; }
+  .output-controls .switch::after { width: 10px; height: 10px; }
+  .output-controls .switch:checked::after { transform: translateX(10px); }
+  .output-controls .opacity-control { min-width: 0; gap: 5px; font-size: 10px; }
+  .output-controls #opacity { min-width: 0; }
+  .diagram-footer .stage-note { flex: 1; }
+  @media (max-width: 650px) {
+    .output-controls .overlay-control { flex-wrap: wrap; justify-content: center; }
+    .output-controls .opacity-control { flex-direction: column; gap: 3px; }
+  }
+</style>
+</head>
+<body>
+<main id="explorer" class="loading" aria-busy="true">
+  <header class="header">
+    <h1>U-Net Feature Explorer</h1>
+    <p class="intro">Explore how a <a href="https://arxiv.org/abs/1505.04597" target="_blank" rel="noopener noreferrer">U-Net</a> segments tubules in <a href="https://en.wikipedia.org/wiki/Cilium" target="_blank" rel="noopener noreferrer">cilia</a> microscopy images by inspecting its feature maps.</p>
+    <p class="summary muted">Training: 382 crops from 7 TIFFs | Validation: 142 crops from 2 TIFFs (checkpoint selection) | Validation Dice: 0.873 · automatic masks (threshold 0.5)</p>
+  </header>
+  <section class="hero panel" aria-label="U-Net architecture">
+    <div class="architecture-row">
+      <figure>
+        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" id="hero-input" alt="Model input">
+        <figcaption>Input</figcaption>
+        <div class="example-list-fade"><div id="examples" class="example-list" role="group" aria-label="Validation examples"></div></div>
+        <div class="input-actions">
+          <button id="upload" class="upload-button" title="Upload a cilium image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/></svg><span>Upload image</span></button>
+          <input id="upload-file" type="file" accept="image/png,image/jpeg" hidden>
+        </div>
+        <p id="status" aria-live="polite">Loading sample…</p>
+      </figure>
+      <div id="diagram"></div>
+      <div class="output-column">
+        <figure><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" id="hero-prediction" alt="Binary prediction"><figcaption>Prediction</figcaption></figure>
+        <div class="output-comparison">
+          <figure id="reference-figure"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" id="hero-reference" alt="Ground truth"><figcaption title="Automatic reference mask">Ground truth</figcaption></figure>
+
+        </div>
+      </div>
+    </div>
+    <div class="diagram-footer">
+      <div class="forward-controls" title="Forward-pass illustration using computed outputs. Animation timing does not represent inference speed.">
+        <span id="forward-progress" role="status" aria-live="polite">Forward pass</span>
+        <button id="forward-toggle" class="icon" aria-label="Replay forward pass" title="Replay forward pass"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+      </div>
+      <p id="stage-note" class="stage-note"></p>
+          <div class="output-controls">
+            <label class="overlay-control" title="Overlay prediction and ground truth on the input"><input id="overlay" class="switch" type="checkbox" aria-label="Overlay on input"><span>Overlay</span></label>
+            <label class="opacity-control">Opacity<input id="opacity" type="range" min="0" max="1" step="0.05" value="0.45" aria-label="Overlay opacity" disabled></label>
+          </div>
+    </div>
+  </section>
+  <div class="workspace">
+    <section class="panel selected-panel" aria-labelledby="selected-heading">
+      <h2 id="selected-heading">Selected feature map</h2>
+      <div class="selected-content">
+        <figure class="preview">
+          <div class="preview-image"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" id="preview" alt="Selected feature map"></div>
+          <figcaption id="selected-info"></figcaption>
+        </figure>
+        <div class="colorbar" aria-label="Selected feature map color scale">
+          <div class="scale-body"><div id="color-strip"></div><div class="color-ticks"><span id="color-min"></span><span id="color-zero"></span><span id="color-max"></span></div></div>
+          <p id="color-caption"></p>
+        </div>
+      </div>
+      <div class="channel-navigation">
+        <button id="previous-channel" class="icon" aria-label="Previous channel" title="Previous channel"><svg viewBox="0 0 24 24"><path d="m14 5-7 7 7 7"/></svg></button>
+        <span id="channel-position"></span>
+        <button id="next-channel" class="icon" aria-label="Next channel" title="Next channel"><svg viewBox="0 0 24 24"><path d="m10 5 7 7-7 7"/></svg></button>
+      </div>
+    </section>
+    <section class="panel maps-panel" aria-labelledby="maps-heading">
+      <div class="maps-heading">
+        <div><h2 id="maps-heading">All feature maps</h2><p id="maps-info" class="muted"></p></div>
+        <div class="maps-tools">
+    <div class="layer-controls">
+      <label class="select-field"><select id="block" aria-label="Block"></select></label>
+      <label class="select-field layer"><select id="layer" aria-label="Layer"></select></label>
+      <button id="previous-layer" class="icon" aria-label="Previous layer" title="Previous layer"><svg viewBox="0 0 24 24"><path d="m14 5-7 7 7 7"/></svg></button>
+      <button id="next-layer" class="icon" aria-label="Next layer" title="Next layer"><svg viewBox="0 0 24 24"><path d="m10 5 7 7-7 7"/></svg></button>
+    </div>
+        <div class="size-control"><div id="activation" class="activation-control" role="group" aria-label="Activation"><button id="activation-pre" aria-pressed="false">Before ReLU</button><button id="activation-post" aria-pressed="true">After ReLU</button><span id="activation-output" hidden>Operation output</span></div><div class="size-buttons" role="group" aria-label="Display size">
+          <button id="uniform" aria-label="Uniform size" aria-pressed="true" title="Uniform size: all maps display at the same size"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 2h5v5H2zM9.5 2h5v5h-5zM17 2h5v5h-5zM2 9.5h5v5H2zM9.5 9.5h5v5h-5zM17 9.5h5v5h-5zM2 17h5v5H2zM9.5 17h5v5h-5zM17 17h5v5h-5z"/></svg></button>
+          <button id="native" aria-label="Native size" aria-pressed="false" title="Native size: map sizes follow each layer’s original pixel dimensions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 2h8v8H2zM13 2h5v5h-5zM20 2h3v3h-3zM13 9h5v5h-5zM20 8h3v3h-3zM2 13h8v8H2zM13 16h5v5h-5zM20 14h3v3h-3zM20 20h3v3h-3z"/></svg></button>
+        </div></div>
+        </div>
+      </div>
+      <div class="grid-viewport"><div class="grid-scroll" tabindex="0" aria-label="Scrollable feature maps"><div id="channels" class="channels"></div></div></div>
+    </section>
+
+  </div>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  const blocks = ['Encoder', 'Bottleneck', 'Decoder', 'Output'];
+  let args, features = [], activeLayer = 'enc_l1_conv1', activeChannel = 0;
+  let activationView = 'post';
+  let sigmoidView = 'pre';
+  let displaySize = 'uniform', sampleId, referenceSource, currentDiagram, lastHeight = 0;
+  let inputPixels, prediction, reference, inputUrl, predictionUrl, referenceUrl;
+  let imageCache = new Map(), lastLayers = new Map();
+  let diagramFacesKey;
+  let selectionVisible = true, originalFaces = [];
+  let collapseDiagram = () => {};
+  let selectionVersion = 0, sampleVersion = 0, updatingSample = false;
+  let diagramPromise;
+  let forwardRun = 0, forwardPlaying = false;
+  const forwardAnimations = new Set();
+  function loadDiagram() {
+    if (!diagramPromise) {
+      diagramPromise = fetch('./architecture.svg').then(response => {
+        if (!response.ok) throw new Error('Could not load the architecture diagram.');
+        return response.text();
+      }).catch(error => { diagramPromise = null; throw error; });
+    }
+    return diagramPromise;
+  }
+  function prepareDiagramViews(items, encoding) {
+    // Every displayed stack needs its real output; unused activation alternatives stay compressed.
+    return Promise.all(items.map(feature => decodeView(feature, viewName(feature), encoding)));
+  }
+  async function decodeView(feature, name, encoding) {
+    const view = feature.views[name];
+    if (!view.ready) {
+      const stream = new Blob([bytes(view.pixels)]).stream()
+        .pipeThrough(new DecompressionStream(encoding));
+      view.ready = new Response(stream).arrayBuffer().then(buffer => {
+        view.decodedPixels = new Uint8Array(buffer);
+      }).catch(error => { delete view.ready; throw error; });
+    }
+    await view.ready;
+  }
+  const namespace = 'http://www.w3.org/2000/svg';
+
+  function send(type, data) {
+    window.parent.postMessage({isStreamlitMessage: true, type, ...data}, '*');
+  }
+  function updateHeight() {
+    const height = Math.ceil($('explorer').getBoundingClientRect().height) + 4;
+    if (height !== lastHeight) {
+      lastHeight = height;
+      send('streamlit:setFrameHeight', {height});
+    }
+  }
+  function bytes(encoded) {
+    return Uint8Array.from(atob(encoded), char => char.charCodeAt(0));
+  }
+  function pixelImage(pixels, width, height, mask = null, opacity = 0) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    const image = context.createImageData(width, height);
+    const color = [249, 115, 22];
+    for (let index = 0; index < pixels.length; index++) {
+      const alpha = mask?.[index] ? opacity : 0;
+      for (let channel = 0; channel < 3; channel++) {
+        image.data[index * 4 + channel] = Math.round(pixels[index] * (1 - alpha) + color[channel] * alpha);
+      }
+      image.data[index * 4 + 3] = 255;
+    }
+    context.putImageData(image, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
+  function currentFeature() {
+    return features.find(feature => feature.id === activeLayer);
+  }
+  function viewName(feature) {
+    return feature.has_relu ? activationView : feature.has_sigmoid ? sigmoidView : 'output';
+  }
+  function channelSource(feature, channel) {
+    if (!feature.id.endsWith('_concat')) return {feature, channel};
+    const half = feature.channels / 2;
+    const source = feature.id.replace('_concat', channel < half ? '_deconv' : '_skip');
+    return {feature: features.find(item => item.id === source), channel: channel % half};
+  }
+  function channelImage(feature, channel) {
+    // Concatenation copies channels. Keep their source colors and per-channel scale.
+    ({feature, channel} = channelSource(feature, channel));
+    const name = viewName(feature);
+    const view = feature.views[name];
+    const key = `${feature.id}:${name}`;
+    if (!imageCache.has(key)) imageCache.set(key, []);
+    const images = imageCache.get(key);
+    if (!images[channel]) {
+      const size = feature.width * feature.height;
+      const data = view.decodedPixels.subarray(channel * size, (channel + 1) * size);
+      const canvas = document.createElement('canvas');
+      canvas.width = feature.width;
+      canvas.height = feature.height;
+      const context = canvas.getContext('2d');
+      const image = context.createImageData(feature.width, feature.height);
+      for (let index = 0; index < size; index++) {
+        const value = view.signed ? (data[index] - 128) / 127 : data[index] / 255;
+        const edge = value < 0 ? [33, 102, 172] : [178, 24, 43];
+        for (let rgb = 0; rgb < 3; rgb++) {
+          image.data[4 * index + rgb] = view.signed
+            ? Math.round(247 + Math.abs(value) * (edge[rgb] - 247))
+            : Math.round(255 * value);
+        }
+        image.data[4 * index + 3] = 255;
+      }
+      context.putImageData(image, 0, 0);
+      images[channel] = canvas.toDataURL('image/png');
+    }
+    return images[channel];
+  }
+  function renderActivationControl(feature) {
+    const available = feature.has_relu || feature.has_sigmoid;
+    const operation = feature.has_sigmoid ? 'sigmoid' : 'ReLU';
+    const selected = feature.has_sigmoid ? sigmoidView : activationView;
+    $('activation').setAttribute('aria-label', available ? `${operation} activation` : 'Operation output');
+    for (const mode of ['pre', 'post']) {
+      const button = $(`activation-${mode}`);
+      button.textContent = `${mode === 'pre' ? 'Before' : 'After'} ${operation}`;
+      button.hidden = !available;
+      button.disabled = !available;
+      button.setAttribute('aria-pressed', String(available && selected === mode));
+    }
+    $('activation-output').hidden = available;
+  }
+  function shortLabel(feature) {
+    return feature.label.replace(/Encoder (\d+)/, 'Level $1').replace(/Decoder (\d+)/, 'Level $1')
+      .replace(/convolution/i, 'Conv');
+  }
+  function renderSelectors(feature) {
+    $('block').value = feature.block;
+    const select = $('layer');
+    select.replaceChildren();
+    let lastGroup;
+    for (const item of features.filter(item => item.block === feature.block)) {
+      const groupName = item.label.split(' · ')[0];
+      if (!lastGroup || lastGroup.label !== groupName) {
+        lastGroup = document.createElement('optgroup');
+        lastGroup.label = groupName;
+        select.appendChild(lastGroup);
+      }
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = shortLabel(item);
+      lastGroup.appendChild(option);
+    }
+    select.value = feature.id;
+    const index = features.findIndex(item => item.id === feature.id);
+    $('previous-layer').disabled = index === 0;
+    $('next-layer').disabled = index === features.length - 1;
+  }
+  function makeSelectable(element, choose, label) {
+    element.setAttribute('role', 'button');
+    element.setAttribute('tabindex', '0');
+    element.setAttribute('aria-label', `Select ${label}`);
+    element.addEventListener('click', event => { event.stopPropagation(); choose(); });
+    element.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); choose(); }
+    });
+    const title = document.createElementNS(namespace, 'title');
+    title.textContent = `Select ${label}`;
+    element.appendChild(title);
+  }
+  function fillDiagramFace(feature, face) {
+    const channel = Number(face.dataset.channel);
+    face.querySelector('image').setAttribute('href', channelImage(feature, channel));
+    face.setAttribute('aria-label', `Select ${feature.label}, channel ${channel + 1}`);
+    const view = feature.has_relu ? `${activationView === 'post' ? 'after' : 'before'} ReLU`
+      : feature.has_sigmoid ? `${sigmoidView === 'post' ? 'after' : 'before'} sigmoid` : 'operation output';
+    face.querySelector('title').textContent = `${feature.label} · Channel ${channel + 1} of ${feature.channels} · ${view}`;
+  }
+  function updateDiagramSelection() {
+    $('explorer').classList.toggle('selection-cleared', !selectionVisible);
+    $('diagram').querySelectorAll('.stack').forEach(stack => {
+      const selected = selectionVisible && stack.id === activeLayer;
+      stack.dataset.selected = String(selected);
+      stack.querySelectorAll('.feature-face').forEach(face => {
+        face.setAttribute('aria-pressed', String(selected && Number(face.dataset.channel) === activeChannel));
+      });
+    });
+  }
+  function renderDiagram(feature, svgText) {
+    if (currentDiagram !== svgText) {
+      currentDiagram = svgText;
+      $('diagram').innerHTML = svgText;
+      const svg = $('diagram').querySelector('svg');
+      const stackHomes = new Map();
+      originalFaces = [];
+      let expandedStack = null;
+      const restoreTimers = new Map();
+      const closingTimers = new Map();
+      let concatReady = null, concatOpenTimer = null, pendingConcatFace = null;
+      const diagramNodes = [...svg.querySelectorAll('.stack, .operation')];
+      let overlapTimers = [];
+      const intersects = (a, b) => a.left <= b.right + 1 && a.right >= b.left - 1
+        && a.top <= b.bottom + 1 && a.bottom >= b.top - 1;
+      function updateOcclusion() {
+        const faces = expandedStack ? [...expandedStack.querySelectorAll('.feature-face, .hover-face')]
+          .map(node => node.getBoundingClientRect()) : [];
+        // Read geometry in one batch, then update opacity. Only touching content is dimmed.
+        const states = diagramNodes.map(node => {
+          if (node === expandedStack || (node.classList.contains('operation') && node.dataset.operation === 'skip')) return [node, false];
+          const parts = node.classList.contains('operation')
+            ? [...node.querySelectorAll('.edge, .edge-caption')] : [node];
+          const bounds = parts.map(part => part.getBoundingClientRect());
+          return [node, faces.some(face => bounds.some(bound => intersects(face, bound)))];
+        });
+        states.forEach(([node, dim]) => node.dataset.occluded = String(dim));
+      }
+      function scheduleOcclusion() {
+        overlapTimers.forEach(clearTimeout);
+        updateOcclusion();
+        // A few bounded checks follow the CSS spread, without a continuous render loop.
+        overlapTimers = expandedStack ? [80, 180, 360].map(delay => setTimeout(updateOcclusion, delay)) : [];
+      }
+      const expandStack = next => {
+        if (expandedStack === next) return;
+        clearTimeout(concatOpenTimer);
+        concatReady = null;
+        pendingConcatFace = null;
+        if (expandedStack) {
+          const previous = expandedStack;
+          const fold = () => {
+            previous.dataset.expanded = 'false';
+            previous.querySelectorAll('.concat-component').forEach(group => group.dataset.expanded = 'false');
+            previous.style.setProperty('--front-fan-extra', '0px');
+            closingTimers.delete(previous);
+            restoreTimers.set(previous, setTimeout(() => {
+              if (previous !== expandedStack) stackHomes.get(previous).after(previous);
+              restoreTimers.delete(previous);
+            }, 280));
+          };
+          // Concat groups fold only after the face-on map has turned back.
+          if (previous.dataset.operation === 'concat') closingTimers.set(previous, setTimeout(fold, 240));
+          else fold();
+        }
+        expandedStack = next;
+        scheduleOcclusion();
+        if (next) {
+          clearTimeout(closingTimers.get(next));
+          closingTimers.delete(next);
+          clearTimeout(restoreTimers.get(next));
+          restoreTimers.delete(next);
+          const moving = [...next.querySelectorAll(next.dataset.operation === 'concat' ? '.concat-component' : '.feature-face')];
+          const starts = moving.map(node => getComputedStyle(node).transform);
+          svg.appendChild(next);
+          // Preserve motion across SVG reparenting with explicit starting transforms.
+          requestAnimationFrame(() => {
+            if (expandedStack !== next) return;
+            next.dataset.expanded = 'true';
+            if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+              moving.forEach((node, index) => {
+                let offset = parseFloat(node.style.getPropertyValue('--spread'));
+                if (node.classList.contains('feature-face')) offset += parseFloat(node.style.getPropertyValue('--hover-gap')) || 0;
+                else if (node.dataset.component === 'skip') offset -= parseFloat(next.style.getPropertyValue('--front-fan-extra')) || 0;
+                node.getAnimations().forEach(animation => animation.cancel());
+                node.animate([{transform: starts[index]}, {transform: `translateX(${offset}px)`}],
+                  {duration: 220, easing: 'cubic-bezier(.4,0,.2,1)'});
+              });
+            }
+            scheduleOcclusion();
+            const readyDelay = next.dataset.operation === 'concat' ? 820 : 420;
+            // Finish spreading before a face-on preview can change the stack's spacing.
+            concatOpenTimer = setTimeout(() => {
+              if (expandedStack !== next) return;
+              concatReady = next;
+              const face = pendingConcatFace;
+              if (face) {
+                expandComponent(face.closest('.concat-component'));
+                facePreview(face);
+              }
+            }, readyDelay);
+          });
+        }
+      };
+      let expandedComponent = null;
+      const expandComponent = next => {
+        if (expandedComponent === next) return;
+        if (expandedComponent) {
+          const previousStack = expandedComponent.closest('.stack');
+          if (previousStack === expandedStack || previousStack.dataset.operation !== 'concat') {
+            expandedComponent.dataset.expanded = 'false';
+            previousStack.style.setProperty('--front-fan-extra', '0px');
+          }
+        }
+        expandedComponent = next;
+        if (next) {
+          next.dataset.expanded = 'true';
+          // Keep the original gap between groups while the front group's maps fan out.
+          const extra = next.dataset.component === 'up' ? next.dataset.fanExtra : 0;
+          next.closest('.stack').style.setProperty('--front-fan-extra', `${extra}px`);
+        }
+        scheduleOcclusion();
+      };
+      let hoveredFace = null, hoverPreview = null;
+      let shiftedFaces = [];
+      let hoverTimer = null;
+      let pointerScrub = null;
+      const facePreview = face => {
+        if (face === hoveredFace) return;
+        shiftedFaces.forEach(item => item.style.removeProperty('--hover-gap'));
+        shiftedFaces = [];
+        if (hoverPreview) {
+          const previous = hoverPreview;
+          const plane = previous.querySelector('.feature-plane');
+          const currentTransform = getComputedStyle(plane).transform;
+          const currentOpacity = getComputedStyle(plane).opacity;
+          const currentPosition = getComputedStyle(previous).transform;
+          plane.getAnimations().forEach(animation => animation.cancel());
+          previous.getAnimations().forEach(animation => animation.cancel());
+          previous.style.transform = currentPosition;
+          previous.dataset.facing = 'false';
+          previous.style.pointerEvents = 'none';
+          plane.style.transform = previous.dataset.originalTransform;
+          plane.style.opacity = '0';
+          if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            plane.animate([
+              {transform: currentTransform, opacity: currentOpacity},
+              {transform: previous.dataset.originalTransform, opacity: 0}
+            ], {duration: 220, easing: 'cubic-bezier(.4,0,.2,1)'});
+          }
+          setTimeout(() => previous.remove(), 240);
+        }
+        hoveredFace = face;
+        hoverPreview = null;
+        if (!face) { pointerScrub = null; scheduleOcclusion(); return; }
+        const stack = face.closest('.stack');
+        hoverPreview = document.createElementNS(namespace, 'g');
+        hoverPreview.setAttribute('class', 'hover-face');
+        hoverPreview.setAttribute('aria-hidden', 'true');
+        hoverPreview.sourceFace = face;
+        const size = Number(stack.dataset.height);
+        const displaySize = Number(stack.dataset.displaySize);
+        // Hovered maps share one display size, centered on the stack height.
+        const previewSize = 160;
+        hoverPreview.style.setProperty('--face-scale', String(previewSize / size));
+        hoverPreview.style.setProperty('--face-top', String(.29 * displaySize - previewSize / 2));
+        const expandedOffset = item => {
+          const group = item.closest('.concat-component');
+          let offset = group ? parseFloat(group.style.getPropertyValue('--spread')) : 0;
+          if (group?.dataset.component === 'skip') {
+            offset -= parseFloat(stack.style.getPropertyValue('--front-fan-extra')) || 0;
+          }
+          const property = !group || group.dataset.expanded === 'true' ? '--spread' : '--rest';
+          return offset + parseFloat(item.style.getPropertyValue(property));
+        };
+        const faceX = expandedOffset(face);
+        stack.querySelectorAll('.feature-face').forEach(other => {
+          // Use stable channel positions, not positions midway through an earlier animation.
+          if (other !== face && expandedOffset(other) > faceX + .1) {
+            other.style.setProperty('--hover-gap', `${previewSize / 2 - .21 * displaySize + 12}px`);
+            shiftedFaces.push(other);
+          }
+        });
+        hoverPreview.addEventListener('click', event => {
+          event.stopPropagation();
+          face.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+        });
+        hoverPreview.appendChild(face.querySelector('.feature-plane').cloneNode(true));
+        stack.appendChild(hoverPreview);
+        // Read placement once; the browser animates rotation and movement without a render loop.
+        const matrix = stack.getCTM().inverse().multiply(face.getCTM());
+        hoverPreview.style.transform = `translateX(${matrix.e}px)`;
+        const targetX = faceX;
+        const plane = hoverPreview.querySelector('.feature-plane');
+        const scale = previewSize / size;
+        const projection = displaySize / size;
+        const half = size / 2;
+        const centerX = .21 * displaySize - half;
+        const centerY = .29 * displaySize - half;
+        // With a central origin and identical translations, rotation and enlargement
+        // preserve the projected image center throughout the animation.
+        plane.style.transformBox = 'fill-box';
+        plane.style.transformOrigin = `${half}px ${half}px`;
+        const originalTransform = `matrix(${.42 * projection}, ${-.12 * projection}, 0, ${.7 * projection}, ${centerX}, ${centerY})`;
+        const finalTransform = `matrix(${scale}, 0, 0, ${scale}, ${centerX}, ${centerY})`;
+        hoverPreview.dataset.originalTransform = originalTransform;
+        hoverPreview.dataset.facing = 'true';
+        hoverPreview.style.transition = 'none';
+        plane.style.transition = 'none';
+        hoverPreview.style.transform = `translateX(${targetX}px)`;
+        plane.style.transform = finalTransform;
+        plane.style.opacity = '1';
+        // Explicit keyframes also animate newly inserted SVG elements reliably.
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          const timing = {duration: 320, easing: 'cubic-bezier(.4,0,.2,1)'};
+          hoverPreview.animate([
+            {transform: `translateX(${matrix.e}px)`},
+            {transform: `translateX(${targetX}px)`}
+          ], timing);
+          plane.animate([
+            {transform: originalTransform, opacity: 0},
+            {transform: finalTransform, opacity: 1}
+          ], timing);
+        }
+        scheduleOcclusion();
+      };
+      const exploreFace = (stack, face) => {
+        expandStack(stack);
+        if (concatReady !== stack) {
+          pendingConcatFace = face;
+          return;
+        }
+        expandComponent(face?.closest('.concat-component') || null);
+        if (face) facePreview(face);
+      };
+      collapseDiagram = () => {
+        clearTimeout(hoverTimer);
+        facePreview(null);
+        expandStack(null);
+        expandComponent(null);
+      };
+      svg.addEventListener('pointermove', event => {
+        if (forwardPlaying) return;
+        const preview = event.target.closest('.hover-face');
+        let target = preview?.sourceFace || event.target;
+        const directFace = target.closest('.feature-face');
+        if (directFace) {
+          const parent = directFace.parentElement;
+          if (!preview || !pointerScrub || pointerScrub.parent !== parent) {
+            pointerScrub = {
+              parent, startX: event.clientX,
+              startOffset: parseFloat(directFace.style.getPropertyValue('--spread')),
+              scale: directFace.closest('.stack').getScreenCTM().a,
+              faces: [...parent.querySelectorAll('.feature-face')].map(face => ({
+                face, offset: parseFloat(face.style.getPropertyValue('--spread'))
+              }))
+            };
+          } else {
+            // Browse the original channel positions even where the enlarged preview covers them.
+            const offset = pointerScrub.startOffset + (event.clientX - pointerScrub.startX) / pointerScrub.scale;
+            target = pointerScrub.faces.reduce((closest, item) =>
+              Math.abs(item.offset - offset) < Math.abs(closest.offset - offset) ? item : closest
+            ).face;
+          }
+        }
+        const stack = target.closest('.stack');
+        clearTimeout(hoverTimer);
+        if (!stack) {
+          // Allow crossing a small gap without repeatedly closing and reopening the stack.
+          hoverTimer = setTimeout(collapseDiagram, 140);
+          return;
+        }
+        if (hoveredFace && stack !== hoveredFace.closest('.stack')) facePreview(null);
+        exploreFace(stack, target.closest('.feature-face'));
+      });
+      svg.addEventListener('pointerleave', () => {
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(collapseDiagram, 140);
+      });
+      for (const item of features) {
+        const stack = svg.querySelector(`[id="${item.svg_id}"]`);
+        stack.addEventListener('click', () => selectLayer(item.id));
+        // Raise the hovered tensor as a whole above neighboring stacks.
+        const home = document.createComment('stack position');
+        stack.before(home);
+        stackHomes.set(stack, home);
+        stack.querySelectorAll('.feature-face').forEach(face => {
+          originalFaces.push({face, parent: face.parentElement, transform: face.getAttribute('transform'), style: face.getAttribute('style')});
+          const channel = Number(face.dataset.channel);
+          makeSelectable(face, () => {
+            clearTimeout(hoverTimer);
+            exploreFace(stack, face);
+            selectLayer(item.id, true, Number(face.dataset.channel));
+          }, `${item.label}, channel ${channel + 1}`);
+        });
+      }
+      svg.querySelectorAll('.architecture-level').forEach(level => {
+        makeSelectable(level, () => selectLayer(level.dataset.layer),
+          `${features.find(item => item.id === level.dataset.layer).block} · ${level.querySelector('text').textContent}`);
+      });
+    }
+    const facesKey = `${sampleId}:${activationView}:${sigmoidView}`;
+    if (diagramFacesKey !== facesKey) {
+      collapseDiagram();
+      $('diagram').querySelectorAll('.hover-face').forEach(face => face.remove());
+      for (const item of features) {
+        const stack = $(item.svg_id);
+        stack.querySelectorAll('.feature-face').forEach(face => {
+          // Reuse exactly the same channel renderer as the grid and enlarged preview.
+          fillDiagramFace(item, face);
+        });
+      }
+      diagramFacesKey = facesKey;
+    }
+    alignArchitectureImages();
+    $('diagram-activation-note').textContent = `Convolution faces: ${activationView === 'post' ? 'after' : 'before'} ReLU`;
+    updateDiagramSelection();
+    const references = {
+      'convolution': 'https://en.wikipedia.org/wiki/Convolutional_neural_network#Convolutional_layer',
+      '1 × 1 convolution': 'https://en.wikipedia.org/wiki/Convolutional_neural_network#Convolutional_layer',
+      'relu': 'https://en.wikipedia.org/wiki/Rectifier_(neural_networks)',
+      'pooling': 'https://en.wikipedia.org/wiki/Convolutional_neural_network#Pooling_layer',
+      'upsampling': 'https://en.wikipedia.org/wiki/Convolutional_neural_network#Deconvolutional',
+      'sigmoid': 'https://en.wikipedia.org/wiki/Sigmoid_function',
+    };
+    $('stage-note').replaceChildren(...feature.note.replace('The view selects before or after ReLU.', feature.has_relu ? `Shown ${activationView === 'post' ? 'after' : 'before'} ReLU.` : '').split(/(1 × 1 convolution|convolution|ReLU|pooling|upsampling|sigmoid)/gi).map(text => {
+      const url = references[text.toLowerCase()];
+      if (!url) return document.createTextNode(text);
+      const link = document.createElement('a');
+      link.textContent = text;
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      return link;
+    }));
+  }
+  function applyDisplaySize() {
+    $('channels').classList.toggle('uniform', displaySize === 'uniform');
+    const size = displaySize === 'native' ? currentFeature().width : 64;
+    $('channels').style.setProperty('--map-size', `${size}px`);
+    $('channels').style.setProperty('--tile-size', `${size + 4}px`);
+    $('uniform').setAttribute('aria-pressed', String(displaySize === 'uniform'));
+    $('native').setAttribute('aria-pressed', String(displaySize === 'native'));
+  }
+  function renderGrid(feature) {
+    const images = Array.from({length: feature.channels}, (_, channel) => channelImage(feature, channel));
+    const fragment = document.createDocumentFragment();
+    for (let index = 0; index < feature.channels; index++) {
+      const button = document.createElement('button');
+      button.className = 'channel';
+      button.setAttribute('aria-label', `Channel ${index + 1}`);
+      button.setAttribute('aria-pressed', String(selectionVisible && index === activeChannel));
+      const image = document.createElement('img');
+      image.src = images[index];
+      image.alt = `Channel ${index + 1}`;
+      const number = document.createElement('span');
+      number.className = 'number';
+      number.textContent = index + 1;
+      button.append(image, number);
+      button.onclick = () => selectChannel(index);
+      fragment.appendChild(button);
+    }
+    $('channels').replaceChildren(fragment);
+    $('channels').parentElement.scrollTop = 0;
+    $('maps-info').textContent = `${feature.channels} ${feature.channels === 1 ? 'channel' : 'channels'} · ${feature.width} × ${feature.height} px`;
+    applyDisplaySize();
+  }
+  function renderPreview() {
+    updateDiagramSelection();
+    const feature = currentFeature();
+    $('preview').src = channelImage(feature, activeChannel);
+    $('preview').alt = `${feature.label}, channel ${activeChannel + 1}`;
+    $('selected-info').textContent = `${feature.width} × ${feature.height} px`;
+    const probabilityView = feature.has_sigmoid && sigmoidView === 'post';
+    const source = channelSource(feature, activeChannel);
+    const view = source.feature.views[viewName(source.feature)];
+    const signed = view.signed;
+    const peak = view.peaks[source.channel];
+    const format = value => Number(value.toPrecision(3)).toString();
+    $('color-strip').style.background = signed
+      ? 'linear-gradient(to right, #2166ac, #f7f7f7, #b2182b)'
+      : 'linear-gradient(to right, #000, #fff)';
+    if (!peak) $('color-strip').style.background = signed ? '#f7f7f7' : '#000';
+    $('color-min').textContent = signed ? format(-peak) : '0';
+    $('color-zero').textContent = signed && peak ? '0' : '';
+    $('color-max').textContent = format(peak);
+    $('color-caption').textContent = probabilityView ? 'Probability' : peak
+      ? `${feature.id === 'final_conv' ? 'Logits' : 'Activation'}` : 'All zero';
+    $('color-caption').title = probabilityView ? 'Fixed 0–1 scale' : 'Per-channel scale';
+    $('channel-position').textContent = `${activeChannel + 1} / ${feature.channels}`;
+    $('previous-channel').disabled = activeChannel === 0;
+    $('next-channel').disabled = activeChannel === feature.channels - 1;
+  }
+  function selectChannel(index, reveal = false, showSelection = true) {
+    if (forwardPlaying) finishForwardPass();
+    if (updatingSample || $('channels').parentElement.getAttribute('aria-busy') === 'true') return;
+    selectionVisible = showSelection;
+    activeChannel = index;
+    renderPreview();
+    $('channels').querySelectorAll('button').forEach((button, channel) =>
+      button.setAttribute('aria-pressed', String(selectionVisible && channel === index)));
+    if (reveal) {
+      const grid = $('channels').parentElement;
+      const button = $('channels').children[index];
+      const top = button.getBoundingClientRect().top - grid.getBoundingClientRect().top;
+      if (top < 0) grid.scrollTop += top;
+      else if (top + button.offsetHeight > grid.clientHeight) grid.scrollTop += top + button.offsetHeight - grid.clientHeight;
+    }
+  }
+  function dismissSelection() {
+    if (updatingSample || !features.length) return;
+    selectionVisible = false;
+    collapseDiagram();
+    for (const {face, parent, transform, style} of originalFaces) {
+      face.setAttribute('transform', transform);
+      if (style === null) face.removeAttribute('style');
+      else face.setAttribute('style', style);
+      const outline = parent.classList.contains('stack') ? parent.querySelector('.stack-frame') : null;
+      parent.insertBefore(face, outline);
+    }
+    const feature = currentFeature();
+    activeChannel = 0;
+    renderPreview();
+    $('channels').querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', 'false'));
+  }
+  document.addEventListener('click', event => {
+    if (event.target.closest('button, select, input, label, a, .stack, .architecture-level, .operation, #preview, .output-column')) return;
+    dismissSelection();
+  });
+  async function selectLayer(id, resetChannel = true, channel = null) {
+    if (forwardPlaying) finishForwardPass();
+    if (updatingSample || !features.length) return;
+    selectionVisible = true;
+    const version = ++selectionVersion;
+    const currentFeatures = features;
+    activeLayer = id;
+    const feature = currentFeature();
+    renderSelectors(feature);
+    renderActivationControl(feature);
+    $('maps-info').textContent = 'Loading feature maps…';
+    $('channels').parentElement.setAttribute('aria-busy', 'true');
+    try {
+      const [svgText] = await Promise.all([
+        loadDiagram(), prepareDiagramViews(features, args.data.encoding)
+      ]);
+      // A newer layer choice or sample must never be overwritten by an older request.
+      if (version !== selectionVersion || currentFeatures !== features) return;
+      if (resetChannel) activeChannel = channel ?? 0;
+      lastLayers.set(feature.block, id);
+      renderDiagram(feature, svgText);
+      renderGrid(feature);
+      $('channels').parentElement.setAttribute('aria-busy', 'false');
+      selectChannel(activeChannel, channel !== null, selectionVisible);
+    } catch (error) {
+      if (version !== selectionVersion || currentFeatures !== features) return;
+      $('status').textContent = error.message;
+      $('maps-info').textContent = 'Could not load feature maps.';
+    }
+    if (version === selectionVersion) $('channels').parentElement.setAttribute('aria-busy', 'false');
+  }
+  function selectBlock(block) {
+    selectLayer(lastLayers.get(block) || features.find(feature => feature.block === block).id);
+  }
+  function renderMasks() {
+    const overlay = $('overlay').checked;
+    const opacity = Number($('opacity').value);
+    $('opacity').disabled = !overlay;
+    $('hero-prediction').src = overlay ? pixelImage(inputPixels, 128, 128, prediction, opacity) : predictionUrl;
+    if (reference) $('hero-reference').src = overlay ? pixelImage(inputPixels, 128, 128, reference, opacity) : referenceUrl;
+    $('reference-figure').hidden = !reference;
+  }
+  function finishForwardPass() {
+    ++forwardRun;
+    forwardPlaying = false;
+    for (const animation of forwardAnimations) animation.cancel();
+    forwardAnimations.clear();
+    const svg = $('diagram').querySelector('svg');
+    if (svg) {
+      svg.querySelectorAll('.stack, .operation').forEach(node => { node.style.opacity = '1'; });
+      svg.querySelectorAll('.edge[mask]').forEach(edge => edge.removeAttribute('mask'));
+      svg.querySelectorAll('[data-forward-mask]').forEach(mask => mask.remove());
+      svg.querySelectorAll('[data-forward-current]').forEach(stack => delete stack.dataset.forwardCurrent);
+    }
+    $('hero-prediction').closest('figure').style.opacity = '1';
+    $('explorer').classList.remove('forward-playing', 'forward-preparing');
+    $('forward-progress').textContent = `Forward pass · ${features.length} / ${features.length}`;
+    $('forward-progress').title = 'Illustrative timing of the model’s forward pass';
+    $('forward-toggle').setAttribute('aria-label', 'Replay forward pass');
+    $('forward-toggle').title = 'Replay forward pass';
+    $('forward-toggle').querySelector('path').setAttribute('d', 'M8 5v14l11-7z');
+  }
+  async function animateForward(node, frames, duration) {
+    const animation = node.animate(frames, {duration, easing: 'ease-in-out', fill: 'forwards'});
+    forwardAnimations.add(animation);
+    let completed = false;
+    try { await animation.finished; completed = true; }
+    catch (error) { if (error.name !== 'AbortError') throw error; }
+    finally {
+      if (completed) {
+        for (const [property, value] of Object.entries(frames[frames.length - 1])) node.style[property] = value;
+        animation.cancel();
+      }
+      forwardAnimations.delete(animation);
+    }
+  }
+  async function revealOperation(operation, run) {
+    const edge = operation.querySelector('.edge');
+    const caption = operation.querySelector('.edge-caption');
+    const length = edge.getTotalLength();
+    const mask = document.createElementNS(namespace, 'mask');
+    mask.id = `forward-mask-${run}-${$('diagram').querySelectorAll('[data-forward-mask]').length}`;
+    mask.dataset.forwardMask = 'true';
+    mask.setAttribute('maskUnits', 'userSpaceOnUse');
+    mask.setAttribute('x', '-100'); mask.setAttribute('y', '-100');
+    const bounds = $('diagram').querySelector('svg').viewBox.baseVal;
+    mask.setAttribute('width', String(bounds.width + 200)); mask.setAttribute('height', String(bounds.height + 200));
+    const trace = document.createElementNS(namespace, 'path');
+    trace.setAttribute('d', edge.getAttribute('d'));
+    trace.setAttribute('fill', 'none'); trace.setAttribute('stroke', 'white');
+    trace.setAttribute('stroke-width', '28'); trace.setAttribute('stroke-linecap', 'round');
+    trace.style.strokeDasharray = `${length} ${length}`;
+    trace.style.strokeDashoffset = String(length);
+    mask.appendChild(trace);
+    $('diagram').querySelector('defs').appendChild(mask);
+    edge.setAttribute('mask', `url(#${mask.id})`);
+    operation.style.opacity = '1';
+    await Promise.all([
+      animateForward(trace, [{strokeDashoffset: String(length)}, {strokeDashoffset: '0'}], 220),
+      animateForward(caption, [{opacity: 0}, {opacity: 1}], 220)
+    ]);
+    if (edge.getAttribute('mask') === `url(#${mask.id})`) edge.removeAttribute('mask');
+    mask.remove();
+  }
+  async function playForwardPass() {
+    if (!features.length || updatingSample) return;
+    finishForwardPass();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    dismissSelection();
+    const run = forwardRun;
+    const svg = $('diagram').querySelector('svg');
+    const operations = [...svg.querySelectorAll('.operation')];
+    forwardPlaying = true;
+    $('explorer').classList.add('forward-playing');
+    $('forward-toggle').setAttribute('aria-label', 'Skip forward-pass animation');
+    $('forward-toggle').title = 'Skip animation and show all outputs';
+    $('forward-toggle').querySelector('path').setAttribute('d', 'M6 6h12v12H6z');
+    svg.querySelectorAll('.stack, .operation').forEach(node => { node.style.opacity = '0'; });
+    $('hero-prediction').closest('figure').style.opacity = '0';
+    try {
+      // The backend's stage list follows model.forward(). Skip stages copy saved encoder outputs.
+      for (const [index, feature] of features.entries()) {
+        if (run !== forwardRun) return;
+        $('forward-progress').textContent = `Forward pass · ${index + 1} / ${features.length}`;
+        $('forward-progress').title = feature.label;
+        const incoming = operations.filter(operation => {
+          const edge = operation.querySelector('.edge');
+          return edge.dataset.to === feature.id || (index === 0 && !edge.dataset.from && edge.getAttribute('d').startsWith('M0 '));
+        });
+        // Both concat inputs must arrive before the combined tensor is revealed.
+        await Promise.all(incoming.map(operation => revealOperation(operation, run)));
+        if (run !== forwardRun) return;
+        svg.querySelectorAll('[data-forward-current]').forEach(stack => delete stack.dataset.forwardCurrent);
+        const stack = $(feature.svg_id);
+        stack.dataset.forwardCurrent = 'true';
+        await animateForward(stack, [{opacity: 0}, {opacity: 1}], 180);
+        if (run !== forwardRun) return;
+        stack.style.opacity = '1';
+      }
+      const output = operations.find(operation => {
+        const edge = operation.querySelector('.edge');
+        return !edge.dataset.to && !edge.getAttribute('d').startsWith('M0 ');
+      });
+      $('forward-progress').textContent = `Forward pass · ${features.length} / ${features.length}`;
+      $('forward-progress').title = 'Sigmoid → threshold 0.5';
+      if (output) await revealOperation(output, run);
+      if (run !== forwardRun) return;
+      await animateForward($('hero-prediction').closest('figure'), [{opacity: 0}, {opacity: 1}], 220);
+    } finally {
+      if (run === forwardRun) finishForwardPass();
+    }
+  }
+  function requestInput(action, extra = {}) {
+    if (forwardPlaying) finishForwardPass();
+    $('status').textContent = 'Loading…';
+    $('examples').querySelectorAll('button').forEach(button => button.disabled = true);
+    $('upload').disabled = true;
+    send('streamlit:setComponentValue', {value: {action, event: Date.now(), ...extra}, dataType: 'json'});
+  }
+  blocks.forEach(block => $('block').add(new Option(block, block)));
+  $('block').onchange = () => selectBlock($('block').value);
+  $('layer').onchange = () => selectLayer($('layer').value);
+  $('previous-layer').onclick = () => selectLayer(features[features.findIndex(f => f.id === activeLayer) - 1].id);
+  $('next-layer').onclick = () => selectLayer(features[features.findIndex(f => f.id === activeLayer) + 1].id);
+  $('previous-channel').onclick = () => selectChannel(activeChannel - 1, true);
+  $('next-channel').onclick = () => selectChannel(activeChannel + 1, true);
+  for (const mode of ['uniform', 'native']) $(mode).onclick = () => { displaySize = mode; applyDisplaySize(); };
+  for (const mode of ['pre', 'post']) $(`activation-${mode}`).onclick = async () => {
+    const feature = currentFeature();
+    if ((feature.has_sigmoid ? sigmoidView : activationView) === mode) return;
+    const scroll = $('channels').parentElement;
+    const position = scroll.scrollTop;
+    if (feature.has_sigmoid) sigmoidView = mode;
+    else activationView = mode;
+    renderActivationControl(feature);
+    await selectLayer(activeLayer, false);
+    scroll.scrollTop = position;
+  };
+  $('overlay').onchange = renderMasks;
+  $('opacity').oninput = renderMasks;
+  $('forward-toggle').onclick = () => {
+    if (forwardPlaying) finishForwardPass();
+    else playForwardPass().catch(error => { $('status').textContent = error.message; });
+  };
+  function renderExamples(items, active) {
+    if (!$('examples').children.length) {
+      items.forEach(item => {
+        const button = document.createElement('button');
+        button.dataset.name = item.name;
+        button.title = `Validation example: ${item.name}`;
+        button.setAttribute('aria-label', button.title);
+        const image = document.createElement('img');
+        image.src = `data:image/png;base64,${item.image}`;
+        image.alt = '';
+        button.appendChild(image);
+        button.onclick = () => { if (button.dataset.name !== args.active_example) requestInput('example', {name: item.name}); };
+        $('examples').appendChild(button);
+      });
+    }
+    $('examples').querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.name === active)));
+  }
+  $('upload').onclick = () => $('upload-file').click();
+  $('upload-file').onchange = () => {
+    const file = $('upload-file').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => requestInput('upload', {bytes: reader.result.split(',')[1]});
+    reader.readAsDataURL(file);
+    $('upload-file').value = '';
+  };
+  window.addEventListener('message', async event => {
+    if (event.source !== window.parent || event.data.type !== 'streamlit:render') return;
+    const nextArgs = event.data.args;
+    const changed = sampleId !== nextArgs.sample_id || referenceSource !== nextArgs.reference;
+    const version = changed ? ++sampleVersion : sampleVersion;
+    if (changed) {
+      if (forwardPlaying) finishForwardPass();
+      updatingSample = true;
+      ++selectionVersion;
+      $('explorer').setAttribute('aria-busy', 'true');
+      setControlsDisabled(true);
+      try {
+        await Promise.all([
+          loadDiagram(),
+          prepareDiagramViews(nextArgs.data.features, nextArgs.data.encoding)
+        ]);
+      } catch (error) {
+        if (version !== sampleVersion) return;
+        updatingSample = false;
+        $('explorer').setAttribute('aria-busy', 'false');
+        $('examples').querySelectorAll('button').forEach(button => button.disabled = false);
+        $('upload').disabled = false;
+        $('status').textContent = error.message;
+        return;
+      }
+      if (version !== sampleVersion) return;
+      // Commit the new input and features together only after its selected view is ready.
+      args = nextArgs;
+      renderExamples(args.examples, args.active_example);
+      sampleId = args.sample_id;
+      referenceSource = args.reference;
+      features = args.data.features;
+      imageCache.clear();
+      inputPixels = bytes(args.data.input);
+      prediction = bytes(args.data.prediction);
+      reference = args.reference ? bytes(args.reference) : null;
+      inputUrl = pixelImage(inputPixels, 128, 128);
+      predictionUrl = pixelImage(Uint8Array.from(prediction, value => value * 255), 128, 128);
+      referenceUrl = reference ? pixelImage(Uint8Array.from(reference, value => value * 255), 128, 128) : null;
+      $('explorer').classList.add('forward-preparing');
+      activeLayer = 'enc_l1_conv1';
+      activeChannel = 0;
+      $('hero-input').src = inputUrl;
+      updatingSample = false;
+      setControlsDisabled(false);
+      await selectLayer(activeLayer);
+      if (version !== sampleVersion) return;
+      renderMasks();
+      $('explorer').classList.remove('loading');
+      $('explorer').setAttribute('aria-busy', 'false');
+      playForwardPass().catch(error => { $('status').textContent = error.message; });
+    }
+    if (version !== sampleVersion) return;
+    $('status').textContent = nextArgs.error || '';
+    $('examples').querySelectorAll('button').forEach(button => button.disabled = false);
+    $('upload').disabled = false;
+    updateHeight();
+  });
+  function setControlsDisabled(disabled) {
+    document.querySelectorAll('button, select, input').forEach(control => control.disabled = disabled);
+  }
+  setControlsDisabled(true);
+  loadDiagram().catch(error => { $('status').textContent = error.message; });
+  function alignArchitectureImages() {
+    const row = document.querySelector('.architecture-row');
+    const svg = $('diagram').querySelector('svg');
+    if (!svg) return;
+    const imageSize = Math.min(128, Math.max(56, row.clientWidth * .085));
+    row.style.setProperty('--hero-image-size', `${imageSize}px`);
+    const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+    // Trim the unused top of the drawing so input and output meet the panel padding.
+    const bounds = svg.viewBox.baseVal;
+    const bottom = bounds.y + bounds.height;
+    const top = Math.max(0, Number(svg.dataset.inputY) - imageSize / (2 * scale));
+    svg.setAttribute('viewBox', `0 ${top} ${bounds.width} ${bottom - top}`);
+    row.style.setProperty('--hero-image-top', '0px');
+  }
+  function fitFeaturePanels() {
+    const scroll = $('channels').parentElement;
+    const columns = innerWidth <= 650 ? 4 : innerWidth <= 900 ? 8 : 16;
+    const mapSize = Math.min(64, Math.max(0, (scroll.clientWidth - 8 - 4 * (columns - 1)) / columns - 4));
+    const gridHeight = 6 + 2 * (mapSize + 21) + 8 + 16;
+    const height = Math.ceil(document.querySelector('.maps-heading').offsetHeight + 6 + 32 + gridHeight);
+    document.querySelector('.workspace').style.setProperty('--workspace-height', `${height}px`);
+    document.querySelector('.grid-viewport').dataset.overflow = String(scroll.scrollHeight > scroll.clientHeight + 1);
+  }
+  const featureLayout = new ResizeObserver(fitFeaturePanels);
+  featureLayout.observe(document.querySelector('.maps-heading'));
+  featureLayout.observe($('channels'));
+  new ResizeObserver(alignArchitectureImages).observe(document.querySelector('.architecture-row'));
+  new ResizeObserver(updateHeight).observe($('explorer'));
+  window.addEventListener('resize', updateHeight);
+  send('streamlit:componentReady', {apiVersion: 1});
+  updateHeight();
+</script>
+</body>
+</html>
