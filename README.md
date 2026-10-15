@@ -2,7 +2,7 @@
 title: U-Net Feature Explorer
 emoji: 🔬
 colorFrom: blue
-colorTo: orange
+colorTo: yellow
 sdk: docker
 app_port: 7860
 pinned: false
