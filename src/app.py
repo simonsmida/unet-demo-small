@@ -22,6 +22,13 @@ st.markdown("""<style>
 [data-testid="stHeader"] { display: none; }
 [data-testid="stToolbar"] { display: none; }
 .st-key-explorer { opacity: 1 !important; }
+@media (max-width: 750px) {
+    .block-container { padding: 12px; }
+}
+@media (max-width: 674px) {
+    [data-testid="stMain"] { overflow: hidden; }
+    iframe { height: calc(100dvh - 24px) !important; }
+}
 html, body, iframe { color-scheme: light !important; }
 [data-testid="stAppViewContainer"] { background: #f8fafc !important; }
 @media (prefers-color-scheme: dark) {

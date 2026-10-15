@@ -78,9 +78,20 @@ in the reported validation score. The 18 thumbnail choices are a browsing subset
 New inputs replay the backend stage order using the computed tensors. Each operation
 arrow is traced before its output appears. Encoder skips are copies, and both inputs
 arrive before concatenation is revealed. Sigmoid and thresholding precede prediction.
+The grid, selected preview and layer controls follow each revealed tensor. The final
+view shows sigmoid probabilities; skipping also jumps to that output.
 Timing is illustrative, not measured inference latency. Replay/skip is available;
 selecting a layer or channel ends the illustration. Reduced-motion preferences skip it.
 
 The three resolution levels use mirrored convolution pairs with a centered bottleneck.
 Pooling arrows point straight down and upsampling arrows straight up; saved skip paths
 remain horizontal and their captions share one aligned column.
+
+## Mobile
+
+Phones show the image comparison and feature explorer without the architecture diagram.
+Sticky block tabs and layer arrows navigate the same tensors as desktop. Tap a channel
+in the four-column uniform grid to inspect it; activation and color scales are unchanged.
+Example thumbnails and upload are below the comparison images. Uploads hide unavailable
+ground truth. Model details are collapsible; automatic forward-pass playback is disabled.
+The desktop diagram and its forward-pass animation remain available on wider screens.
