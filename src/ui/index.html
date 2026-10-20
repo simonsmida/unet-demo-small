@@ -211,7 +211,9 @@
     .diagram-footer #status { margin: 0; max-width: 220px; text-align: left; }
   }
   @media (min-width: 1101px) {
-    .input-column, .output-column { display: grid; grid-template-columns: repeat(2, var(--hero-image-size, 96px)); align-content: start; align-items: start; gap: 16px; }
+    .input-column, .output-column { position: relative; display: grid; grid-template-columns: repeat(2, var(--hero-image-size, 96px)); align-content: start; align-items: start; gap: 24px; }
+    .input-column::after, .output-column::after { content: ''; position: absolute; top: 0; left: calc(var(--hero-image-size, 96px) + 12px); width: 1px; height: var(--hero-image-size, 96px); background: var(--line); pointer-events: none; }
+    .no-reference .output-column::after { display: none; }
     .input-column > figure { grid-column: 2; grid-row: 1; }
     .input-tools { grid-column: 1; grid-row: 1; margin-top: 0; }
     .output-comparison { margin-top: 0; }
@@ -1299,7 +1301,7 @@
     const availableHeight = hero.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
       - document.querySelector('.diagram-footer').offsetHeight - 8;
     const imageSize = Math.min(96, Math.max(72, availableHeight * .28));
-    const sideWidth = innerWidth >= 1101 ? 2 * imageSize + 16 : imageSize;
+    const sideWidth = innerWidth >= 1101 ? 2 * imageSize + 24 : imageSize;
     const bounds = svg.viewBox.baseVal;
     const bottom = bounds.y + bounds.height;
     const inputY = Number(svg.dataset.inputY);
