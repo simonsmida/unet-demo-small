@@ -48,9 +48,11 @@ validation crops reproduce Dice 0.8730380315. No retraining or prediction change
   through the preview browses channels without changing their order. Clicking selects that channel.
   Concat first separates into its source groups, pauses, then allows face-on browsing.
   On exit, the preview closes before the groups fold together. Clicking the page background clears selection.
-- Spatial planes use display sizes of 180, 132 and 112 diagram units for 128, 64 and 32 pixel maps.
+- Spatial planes use display sizes of 136, 104 and 88 diagram units for 128, 64 and 32 pixel maps.
   Their displayed sizes still decrease with depth; labels always give true tensor dimensions. Spatial dimensions sit at the right and bottom edges of the front-right plane;
   channel count sits below the stack-depth axis. Full previews remain square.
+- Desktop panels fit the available viewport height. The diagram scales proportionally;
+  short windows can scroll, while the feature grid scrolls within its panel.
 - Colored orthogonal arrows identify operations, with technical details on hover.
   Convolution arrows have equal lengths within each resolution level. Encoder/decoder
   convolution pairs share a symmetry axis; the bottleneck pair is centered in the drawing.

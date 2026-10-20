@@ -17,16 +17,15 @@ from model import UNet
 torch.set_num_threads(2)
 st.set_page_config(page_title="U-Net Feature Explorer", layout="wide")
 st.markdown("""<style>
-.block-container { padding: 1.25rem 2rem 1rem; }
+.block-container { padding: 16px 20px; }
 .block-container [data-testid="stVerticalBlock"] { gap: 0; }
 [data-testid="stHeader"] { display: none; }
 [data-testid="stToolbar"] { display: none; }
 .st-key-explorer { opacity: 1 !important; }
+[data-testid="stMain"] { overflow: hidden; }
+iframe { height: calc(100dvh - 32px) !important; }
 @media (max-width: 750px) {
     .block-container { padding: 12px; }
-}
-@media (max-width: 674px) {
-    [data-testid="stMain"] { overflow: hidden; }
     iframe { height: calc(100dvh - 24px) !important; }
 }
 html, body, iframe { color-scheme: light !important; }
