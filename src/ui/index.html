@@ -47,7 +47,7 @@
     .architecture-row { flex-shrink: 0; }
     .diagram-footer { flex-shrink: 0; }
   }
-  .architecture-row { display: grid; grid-template-columns: var(--hero-image-size, 96px) minmax(0, 1fr) var(--hero-image-size, 96px); align-items: start; gap: 0; margin-inline: auto; }
+  .architecture-row { display: grid; grid-template-columns: var(--hero-side-width, 96px) minmax(0, 1fr) var(--hero-side-width, 96px); align-items: start; gap: 0; margin-inline: auto; }
   .hero figure { text-align: center; align-self: start; margin-top: var(--hero-image-top, 0px); }
   .hero figcaption { font-size: 12px; font-weight: 500; margin-top: 6px; }
   .hero figcaption span { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 3px; }
@@ -209,6 +209,13 @@
     .input-tools .upload-button { height: 30px; }
     .output-comparison figcaption { height: 30px; margin-top: 8px; display: flex; align-items: center; justify-content: center; }
     .diagram-footer #status { margin: 0; max-width: 220px; text-align: left; }
+  }
+  @media (min-width: 1101px) {
+    .input-column, .output-column { display: grid; grid-template-columns: repeat(2, var(--hero-image-size, 96px)); align-content: start; align-items: start; gap: 16px; }
+    .input-column > figure { grid-column: 2; grid-row: 1; }
+    .input-tools { grid-column: 1; grid-row: 1; margin-top: 0; }
+    .output-comparison { margin-top: 0; }
+    .hero figcaption, .output-comparison figcaption { height: 30px; margin-top: 8px; display: flex; align-items: center; justify-content: center; }
   }
   @media (max-width: 650px) {
     html, body { height: var(--mobile-height, 100vh); overflow: hidden; }
@@ -1292,13 +1299,15 @@
     const availableHeight = hero.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
       - document.querySelector('.diagram-footer').offsetHeight - 8;
     const imageSize = Math.min(96, Math.max(72, availableHeight * .28));
+    const sideWidth = innerWidth >= 1101 ? 2 * imageSize + 16 : imageSize;
     const bounds = svg.viewBox.baseVal;
     const bottom = bounds.y + bounds.height;
     const inputY = Number(svg.dataset.inputY);
-    const scale = Math.min((availableWidth - 2 * imageSize) / bounds.width,
+    const scale = Math.min((availableWidth - 2 * sideWidth) / bounds.width,
       Math.max(1, availableHeight - imageSize / 2) / (bottom - inputY));
     row.style.setProperty('--hero-image-size', `${imageSize}px`);
-    row.style.width = `${scale * bounds.width + 2 * imageSize}px`;
+    row.style.setProperty('--hero-side-width', `${sideWidth}px`);
+    row.style.width = `${scale * bounds.width + 2 * sideWidth}px`;
     // Input and prediction centers stay aligned with the first and last arrows.
     const top = Math.max(0, inputY - imageSize / (2 * scale));
     svg.setAttribute('viewBox', `0 ${top} ${bounds.width} ${bottom - top}`);
