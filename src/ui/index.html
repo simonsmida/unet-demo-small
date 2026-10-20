@@ -149,7 +149,10 @@
   .switch::after { content: ''; width: 14px; height: 14px; background: #fff; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: transform 180ms ease, box-shadow 180ms ease; }
   .switch:checked { background: var(--blue); }
   .switch:checked::after { transform: translateX(14px); }
-  .opacity-control { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 110px; font-size: 11px; color: var(--muted); }
+  .opacity-control { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; flex: 1; min-width: 0; font-size: 11px; color: var(--muted); }
+  .overlay-label { grid-column: 1; grid-row: 2; }
+  .opacity-control #opacity { grid-column: 1 / -1; grid-row: 1; margin: 0; }
+  .opacity-control .overlay-value { grid-column: 2; grid-row: 2; }
   #opacity { width: 100%; min-width: 60px; accent-color: var(--blue); cursor: pointer; }
   #status:empty { display: none; }
   #status { font-size: 11px; color: var(--muted); text-align: center; min-height: 15px; margin-top: 3px; }
@@ -179,7 +182,7 @@
   .diagram-footer .stage-note { margin-top: 0; }
   .forward-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: #64748b; font-size: 11px; }
   #forward-progress { display: inline-block; width: 42px; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .diagram-toolbar { display: flex; align-items: center; gap: 16px; min-height: 32px; margin-bottom: 8px; }
+  .diagram-toolbar { display: flex; align-items: center; gap: 16px; min-height: 32px; margin-bottom: 24px; }
   .playback-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
   .playback-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .layer-info { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--line); }
@@ -231,9 +234,7 @@
     .input-column, .output-column { row-gap: 8px; }
     .output-column > .output-controls { grid-column: 1 / -1; grid-row: 2; flex-direction: column; align-items: stretch; gap: 6px; width: 100%; }
     .output-column .output-controls .opacity-control { flex: none; }
-    .output-column .opacity-control { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
-    .output-column #opacity { grid-column: 1 / -1; grid-row: 2; }
-    .output-column .overlay-value { grid-column: 2; grid-row: 1; }
+    .output-column { row-gap: 4px; }
 
   }
   @media (min-width: 651px) {
@@ -359,7 +360,7 @@
     <div class="diagram-footer">
       <p id="status" aria-live="polite">Loading sample…</p>
           <div class="output-controls">
-            <label class="opacity-control" title="Off shows binary masks. Increase to overlay the masks on the input image.">Mask overlay<input id="opacity" type="range" min="0" max="1" step="0.05" value="0" aria-label="Mask overlay"><output id="overlay-value" class="overlay-value" for="opacity">Off</output></label>
+            <label class="opacity-control" title="Off shows binary masks. Increase to overlay the masks on the input image."><span class="overlay-label">Mask overlay</span><input id="opacity" type="range" min="0" max="1" step="0.05" value="0" aria-label="Mask overlay"><output id="overlay-value" class="overlay-value" for="opacity">Off</output></label>
           </div>
     </div>
   </section>
@@ -1361,9 +1362,12 @@
     const svg = $('diagram').querySelector('svg');
     if (!svg) return;
     const style = getComputedStyle(hero);
+    const toolbar = document.querySelector('.diagram-toolbar');
+    const footer = document.querySelector('.diagram-footer');
+    const verticalGaps = parseFloat(getComputedStyle(toolbar).marginBottom) + parseFloat(getComputedStyle(footer).marginTop);
     const availableWidth = hero.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     const availableHeight = hero.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
-      - document.querySelector('.diagram-footer').offsetHeight - document.querySelector('.diagram-toolbar').offsetHeight - 16;
+      - footer.offsetHeight - toolbar.offsetHeight - verticalGaps;
     const imageSize = Math.min(96, Math.max(72, availableHeight * .28));
     const sideWidth = innerWidth >= 1101 && !$('simplified').checked ? 2 * imageSize + 24 : imageSize;
     const bounds = svg.viewBox.baseVal;
