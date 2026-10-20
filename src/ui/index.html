@@ -182,7 +182,7 @@
   .diagram-footer .stage-note { margin-top: 0; }
   .forward-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: #64748b; font-size: 11px; }
   #forward-progress { display: inline-block; width: 42px; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .diagram-toolbar { display: flex; align-items: center; gap: 16px; min-height: 32px; margin-bottom: 24px; }
+  .diagram-toolbar { display: flex; align-items: center; gap: 16px; min-height: 32px; margin-top: 24px; }
   .playback-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
   .playback-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .layer-info { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--line); }
@@ -327,13 +327,6 @@
     <details id="mobile-model-details" class="mobile-only"><summary>Model details</summary></details>
   </header>
   <section class="hero panel" aria-label="U-Net architecture">
-    <div class="diagram-toolbar">
-      <div class="forward-controls" title="Forward-pass illustration using computed outputs. Animation timing does not represent inference speed.">
-        <button id="forward-toggle" class="playback-button" aria-label="Replay forward pass" title="Replay forward pass"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Forward pass</span></button>
-        <span id="forward-progress" role="status" aria-live="polite">0 / 19</span>
-      </div>
-      <div class="layer-info" role="note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg><p id="stage-note" class="stage-note"></p></div>
-    </div>
     <div class="architecture-row">
       <div class="input-column">
       <figure id="input-figure">
@@ -356,6 +349,13 @@
 
         </div>
       </div>
+    </div>
+    <div class="diagram-toolbar">
+      <div class="forward-controls" title="Forward-pass illustration using computed outputs. Animation timing does not represent inference speed.">
+        <button id="forward-toggle" class="playback-button" aria-label="Replay forward pass" title="Replay forward pass"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Forward pass</span></button>
+        <span id="forward-progress" role="status" aria-live="polite">0 / 19</span>
+      </div>
+      <div class="layer-info" role="note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg><p id="stage-note" class="stage-note"></p></div>
     </div>
     <div class="diagram-footer">
       <p id="status" aria-live="polite">Loading sample…</p>
@@ -1364,7 +1364,7 @@
     const style = getComputedStyle(hero);
     const toolbar = document.querySelector('.diagram-toolbar');
     const footer = document.querySelector('.diagram-footer');
-    const verticalGaps = parseFloat(getComputedStyle(toolbar).marginBottom) + parseFloat(getComputedStyle(footer).marginTop);
+    const verticalGaps = parseFloat(getComputedStyle(toolbar).marginTop) + parseFloat(getComputedStyle(footer).marginTop);
     const availableWidth = hero.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     const availableHeight = hero.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
       - footer.offsetHeight - toolbar.offsetHeight - verticalGaps;
