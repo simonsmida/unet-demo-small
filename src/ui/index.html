@@ -180,11 +180,10 @@
 
   .diagram-footer { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 0; margin-top: 8px; }
   .diagram-footer .stage-note { margin-top: 0; }
-  .forward-controls { display: flex; align-items: center; justify-content: flex-end; gap: 4px; padding-right: 12px; color: #64748b; font-size: 11px; }
+  .forward-controls { display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding-right: 12px; color: #64748b; font-size: 11px; }
   #forward-progress { display: inline-block; width: 36px; text-align: center; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .diagram-toolbar { display: grid; grid-template-columns: var(--diagram-divider-x, 96px) minmax(0, 1fr); align-items: center; min-height: 32px; margin-top: 6px; }
-  .playback-button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; }
-  .playback-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .playback-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 7px; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
   .playback-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .layer-info { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--line); }
   .layer-info > svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: #64748b; stroke-width: 1.5; }
@@ -1371,17 +1370,19 @@
       - footer.offsetHeight - toolbar.offsetHeight - verticalGaps;
     const imageSize = Math.min(96, Math.max(72, availableHeight * .28));
     const sideWidth = innerWidth >= 1101 && !$('simplified').checked ? 2 * imageSize + 24 : imageSize;
+    const wideDetailed = innerWidth >= 1101 && !$('simplified').checked;
+    const rowLimit = wideDetailed ? availableWidth - 2 * Math.max(0, 180 - imageSize - 12) : availableWidth;
     const bounds = svg.viewBox.baseVal;
     const bottom = bounds.y + bounds.height;
     const inputY = Number(svg.dataset.inputY);
-    const scale = Math.min((availableWidth - 2 * sideWidth) / bounds.width,
+    const scale = Math.min((rowLimit - 2 * sideWidth) / bounds.width,
       Math.max(1, availableHeight - imageSize / 2) / (bottom - inputY));
     row.style.setProperty('--hero-image-size', `${imageSize}px`);
     row.style.setProperty('--hero-side-width', `${sideWidth}px`);
     const rowWidth = scale * bounds.width + 2 * sideWidth;
     row.style.width = `${rowWidth}px`;
-    const dividerX = innerWidth >= 1101 && !$('simplified').checked
-      ? (availableWidth - rowWidth) / 2 + imageSize + 12 : 96;
+    const dividerX = wideDetailed
+      ? (availableWidth - rowWidth) / 2 + imageSize + 12 : 180;
     hero.style.setProperty('--diagram-divider-x', `${dividerX}px`);
     // Input and prediction centers stay aligned with the first and last arrows.
     const top = Math.max(0, inputY - imageSize / (2 * scale));
