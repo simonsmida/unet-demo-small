@@ -40,6 +40,10 @@ validation crops reproduce Dice 0.8730380315. No retraining or prediction change
 
 ## Diagram and feature maps
 
+The Simplified diagram switch replaces activation images with blue planes and gray
+concatenation planes. It hides sample selection, the reference and overlay controls.
+Shapes and operations stay unchanged; stacks still select their layer in the explorer.
+
 - `src/ui/architecture.svg` shows all 19 tensor stages and every channel in fixed order.
   Map planes share a horizontal baseline and use an oblique spatial projection. Regular stacks show channel 1 in front; concat stacks show
   encoder-skip channels on the left and upsampled channels on the right.
