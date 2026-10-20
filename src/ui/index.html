@@ -40,7 +40,7 @@
   .icon { width: 42px; height: 42px; display: inline-flex; justify-content: center; align-items: center; flex-shrink: 0; }
   .icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .panel { color-scheme: light; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
-  .hero { padding: 16px 16px 12px; margin-bottom: 12px; }
+  .hero { padding: 16px; margin-bottom: 12px; }
   @media (min-width: 651px) {
     html, body { height: 100%; overflow-x: hidden; }
     #explorer { height: 100dvh; min-height: 610px; display: flex; flex-direction: column; }
@@ -179,6 +179,7 @@
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
   .diagram-footer { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 0; margin-top: 8px; }
+  .diagram-footer:has(#status:empty):not(:has(.output-controls)) { display: none; }
   .diagram-footer .stage-note { margin-top: 0; }
   .forward-controls { display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding-right: 12px; color: #64748b; font-size: 11px; }
   #forward-progress { display: inline-block; width: 36px; text-align: center; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -1364,7 +1365,8 @@
     const style = getComputedStyle(hero);
     const toolbar = document.querySelector('.diagram-toolbar');
     const footer = document.querySelector('.diagram-footer');
-    const verticalGaps = parseFloat(getComputedStyle(toolbar).marginTop) + parseFloat(getComputedStyle(footer).marginTop);
+    const verticalGaps = parseFloat(getComputedStyle(toolbar).marginTop)
+      + (footer.offsetHeight ? parseFloat(getComputedStyle(footer).marginTop) : 0);
     const availableWidth = hero.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     const availableHeight = hero.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
       - footer.offsetHeight - toolbar.offsetHeight - verticalGaps;
