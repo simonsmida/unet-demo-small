@@ -51,7 +51,7 @@
   }
   .architecture-row { display: grid; grid-template-columns: var(--hero-side-width, 96px) minmax(0, 1fr) var(--hero-side-width, 96px); align-items: start; gap: 0; margin-inline: auto; }
   .hero figure { text-align: center; align-self: start; margin-top: var(--hero-image-top, 0px); }
-  .hero figcaption { font-size: 12px; font-weight: 500; margin-top: 6px; }
+  .hero figcaption { font-size: 11px; font-weight: 500; margin-top: 6px; white-space: nowrap; }
   .hero figcaption span { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 3px; }
   .hero figure img { width: var(--hero-image-size, 96px); height: var(--hero-image-size, 96px); border-radius: 4px; display: block; }
   .input-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
@@ -145,7 +145,6 @@
   .channel[aria-pressed="true"] .number { color: #c2410c; font-weight: 600; }
   .channel:hover, .channel:focus-visible { z-index: 2; background: transparent !important; }
   .channel:hover img, .channel:focus-visible img { transform: scale(1.3); box-shadow: 0 4px 14px rgba(23,35,67,.18); }
-  .overlay-control { display: flex; align-items: center; gap: 9px; font-size: 11px; cursor: pointer; white-space: nowrap; }
   .switch { appearance: none; width: 34px; height: 20px; border-radius: 20px; background: #b9c2d0; position: relative; cursor: pointer; margin: 0; transition: background 150ms ease; }
   .switch::after { content: ''; width: 14px; height: 14px; background: #fff; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: transform 180ms ease, box-shadow 180ms ease; }
   .switch:checked { background: var(--blue); }
@@ -176,12 +175,18 @@
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
-  .diagram-footer { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 32px; margin-top: 8px; }
+  .diagram-footer { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 0; margin-top: 8px; }
   .diagram-footer .stage-note { margin-top: 0; }
   .forward-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: #64748b; font-size: 11px; }
   #forward-progress { display: inline-block; width: 42px; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .playback-label { font-size: 11px; white-space: nowrap; }
-  .forward-controls .icon { width: 30px; height: 28px; }
+  .diagram-toolbar { display: flex; align-items: center; gap: 16px; min-height: 32px; margin-bottom: 8px; }
+  .playback-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+  .playback-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .layer-info { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--line); }
+  .layer-info > svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: #64748b; stroke-width: 1.5; }
+  .layer-info .stage-note { margin: 0; }
+  .overlay-value { min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+
   #forward-toggle[aria-label="Replay forward pass"] { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
   #forward-toggle[aria-label="Replay forward pass"]:hover { background: #bbf7d0; border-color: #86efac; }
   .forward-preparing #diagram .stack, .forward-preparing #diagram .operation, .forward-preparing #hero-prediction { opacity: 0 !important; }
@@ -195,15 +200,10 @@
   .output-column figure { margin: 0; }
   .output-comparison { display: grid; margin-top: auto; }
   .output-controls { display: flex; align-items: center; gap: 12px; width: 232px; max-width: 100%; flex-shrink: 0; margin-left: auto; }
-  .output-controls .overlay-control { gap: 6px; font-size: 11px; }
-  .output-controls .switch { flex-shrink: 0; width: 26px; height: 16px; }
-  .output-controls .switch::after { width: 10px; height: 10px; }
-  .output-controls .switch:checked::after { transform: translateX(10px); }
   .output-controls .opacity-control { min-width: 0; gap: 6px; font-size: 11px; }
   .output-controls #opacity { min-width: 0; }
   .diagram-footer .stage-note { flex: 1; min-width: 0; }
   @media (max-width: 650px) {
-    .output-controls .overlay-control { flex-wrap: wrap; justify-content: center; }
     .output-controls .opacity-control { flex-direction: column; gap: 3px; }
   }
 
@@ -229,25 +229,23 @@
     .output-comparison { margin-top: 0; }
     .hero figcaption, .output-comparison figcaption { height: 30px; margin-top: 8px; display: flex; align-items: center; justify-content: center; }
     .input-column, .output-column { row-gap: 8px; }
-    .input-column > .forward-controls { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: 30px 1fr; gap: 4px 6px; }
-    .input-column .playback-label { grid-column: 1 / -1; text-align: center; }
-    .input-column #forward-progress { grid-column: 2; grid-row: 2; width: 100%; font-size: 10px; }
-    .input-column #forward-toggle { grid-column: 1; grid-row: 2; }
     .output-column > .output-controls { grid-column: 1 / -1; grid-row: 2; flex-direction: column; align-items: stretch; gap: 6px; width: 100%; }
     .output-column .output-controls .opacity-control { flex: none; }
-    .diagram-footer .stage-note { text-align: center; }
+    .output-column .opacity-control { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
+    .output-column #opacity { grid-column: 1 / -1; grid-row: 2; }
+    .output-column .overlay-value { grid-column: 2; grid-row: 1; }
 
   }
   @media (min-width: 651px) {
     .simplified .input-column, .simplified .output-column { display: flex; flex-direction: column; }
     .simplified .input-tools, .simplified .output-comparison, .simplified .output-controls,
     .simplified .input-column::after, .simplified .output-column::after { display: none; }
-    .simplified #stage-note { visibility: hidden; }
+    .simplified .layer-info { display: none; }
     .simplified #diagram .feature-plane image { display: none; }
     .simplified #diagram .feature-plane > rect:not(.face-border) { fill: #bedaf4; }
     .simplified #diagram .face-border { stroke: #8bb7dc; stroke-width: .7; }
-    .simplified #diagram .stack[data-operation="concat"] .feature-plane > rect:not(.face-border) { fill: #e2e8f0; }
-    .simplified #diagram .stack[data-operation="concat"] .face-border { stroke: #b2becb; }
+    .simplified #diagram .stack[data-operation="skip"] .feature-plane > rect:not(.face-border), .simplified #diagram .concat-component[data-component="skip"] .feature-plane > rect:not(.face-border) { fill: #e2e8f0; }
+    .simplified #diagram .stack[data-operation="skip"] .face-border, .simplified #diagram .concat-component[data-component="skip"] .face-border { stroke: #b2becb; }
     .simplified #diagram .feature-face { pointer-events: none; transform: translateX(var(--rest)) !important; }
     .simplified #diagram .concat-component { transform: translateX(var(--rest)) !important; }
     .simplified #diagram .stack-frame { pointer-events: all; }
@@ -267,7 +265,7 @@
     #mobile-model-details[open] > summary::after { content: '⌃'; }
     #mobile-model-details .summary { white-space: normal; font-size: 11px; padding-bottom: 8px; }
     .hero { padding: 12px; margin-bottom: 12px; }
-    #diagram, .forward-controls, .diagram-footer .stage-note { display: none !important; }
+    #diagram, .diagram-toolbar { display: none !important; }
     .architecture-row { width: 100% !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
     .input-column, .output-column, .output-comparison { display: contents; }
     .hero figure { margin: 0; }
@@ -290,12 +288,8 @@
     #status:empty { display: none; }
     .diagram-footer { margin-top: 8px; min-height: 44px; }
     .output-controls { width: 100%; gap: 18px; margin: 0; min-height: 44px; }
-    .output-controls .overlay-control { min-height: 44px; font-size: 12px; gap: 8px; }
     .output-controls .opacity-control { flex-direction: row; font-size: 12px; gap: 8px; }
     .output-controls #opacity { min-height: 44px; }
-    .output-controls .switch { width: 34px; height: 20px; }
-    .output-controls .switch::after { width: 14px; height: 14px; }
-    .output-controls .switch:checked::after { transform: translateX(14px); }
     #mobile-navigation { position: sticky; top: 0; z-index: 5; padding: 8px; margin-bottom: 12px; box-shadow: 0 3px 12px #1723430d; }
     .mobile-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin-bottom: 8px; }
     .mobile-tabs button { min-height: 44px; padding: 0 3px; font-size: 11px; border-color: transparent; background: #f8fafc; }
@@ -326,12 +320,19 @@
 <main id="explorer" class="loading" aria-busy="true">
   <header class="header">
     <h1>U-Net Feature Explorer</h1>
-    <label class="diagram-view-control" title="Show the architecture as blue feature stacks and gray concatenations"><input id="simplified" class="switch" type="checkbox" role="switch"><span>Simplified diagram</span></label>
+    <label class="diagram-view-control" title="Show blue feature stacks and gray copied skip features"><input id="simplified" class="switch" type="checkbox" role="switch"><span>Simplified diagram</span></label>
     <p class="intro">Explore how a <a href="https://arxiv.org/abs/1505.04597" target="_blank" rel="noopener noreferrer">U-Net</a> segments tubules in <a href="https://en.wikipedia.org/wiki/Cilium" target="_blank" rel="noopener noreferrer">cilia</a> microscopy images by inspecting its feature maps.</p>
     <p class="summary muted">Training: 382 crops from 7 TIFFs | Validation: 142 crops from 2 TIFFs (checkpoint selection) | Validation Dice: 0.873 · automatic masks (threshold 0.5)</p>
     <details id="mobile-model-details" class="mobile-only"><summary>Model details</summary></details>
   </header>
   <section class="hero panel" aria-label="U-Net architecture">
+    <div class="diagram-toolbar">
+      <div class="forward-controls" title="Forward-pass illustration using computed outputs. Animation timing does not represent inference speed.">
+        <button id="forward-toggle" class="playback-button" aria-label="Replay forward pass" title="Replay forward pass"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Forward pass</span></button>
+        <span id="forward-progress" role="status" aria-live="polite">0 / 19</span>
+      </div>
+      <div class="layer-info" role="note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg><p id="stage-note" class="stage-note"></p></div>
+    </div>
     <div class="architecture-row">
       <div class="input-column">
       <figure id="input-figure">
@@ -356,16 +357,9 @@
       </div>
     </div>
     <div class="diagram-footer">
-      <div class="forward-controls" title="Forward-pass illustration using computed outputs. Animation timing does not represent inference speed.">
-        <span class="playback-label">Forward pass</span>
-        <span id="forward-progress" role="status" aria-live="polite">0 / 19</span>
-        <button id="forward-toggle" class="icon" aria-label="Replay forward pass" title="Replay forward pass"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
-      </div>
-      <p id="stage-note" class="stage-note"></p>
       <p id="status" aria-live="polite">Loading sample…</p>
           <div class="output-controls">
-            <label class="overlay-control" title="Overlay prediction and ground truth on the input"><input id="overlay" class="switch" type="checkbox" aria-label="Overlay on input"><span>Overlay</span></label>
-            <label class="opacity-control">Opacity<input id="opacity" type="range" min="0" max="1" step="0.05" value="0.45" aria-label="Overlay opacity" disabled></label>
+            <label class="opacity-control" title="Off shows binary masks. Increase to overlay the masks on the input image.">Mask overlay<input id="opacity" type="range" min="0" max="1" step="0.05" value="0" aria-label="Mask overlay"><output id="overlay-value" class="overlay-value" for="opacity">Off</output></label>
           </div>
     </div>
   </section>
@@ -1086,9 +1080,11 @@
     selectLayer(lastLayers.get(block) || features.find(feature => feature.block === block).id);
   }
   function renderMasks() {
-    const overlay = $('overlay').checked && !($('simplified').checked && !mobileMode.matches);
     const opacity = Number($('opacity').value);
-    $('opacity').disabled = !overlay;
+    const overlay = opacity > 0 && !($('simplified').checked && !mobileMode.matches);
+    const level = opacity ? `${Math.round(opacity * 100)}%` : 'Off';
+    $('overlay-value').textContent = level;
+    $('opacity').setAttribute('aria-valuetext', opacity ? `${level} mask opacity on input` : 'Off: binary masks');
     $('hero-prediction').src = overlay ? pixelImage(inputPixels, 128, 128, prediction, opacity) : predictionUrl;
     if (reference) $('hero-reference').src = overlay ? pixelImage(inputPixels, 128, 128, reference, opacity) : referenceUrl;
     $('reference-figure').hidden = !reference;
@@ -1255,7 +1251,6 @@
     await selectLayer(activeLayer, false);
     scroll.scrollTop = position;
   };
-  $('overlay').onchange = renderMasks;
   $('simplified').onchange = () => {
     if (forwardPlaying) finishForwardPass();
     collapseDiagram();
@@ -1368,7 +1363,7 @@
     const style = getComputedStyle(hero);
     const availableWidth = hero.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     const availableHeight = hero.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
-      - document.querySelector('.diagram-footer').offsetHeight - 8;
+      - document.querySelector('.diagram-footer').offsetHeight - document.querySelector('.diagram-toolbar').offsetHeight - 16;
     const imageSize = Math.min(96, Math.max(72, availableHeight * .28));
     const sideWidth = innerWidth >= 1101 && !$('simplified').checked ? 2 * imageSize + 24 : imageSize;
     const bounds = svg.viewBox.baseVal;
@@ -1394,15 +1389,12 @@
     document.querySelector('.grid-viewport').dataset.overflow = String(scroll.scrollHeight > scroll.clientHeight + 1);
   }
   const wideDiagram = matchMedia('(min-width: 1101px)');
-  const playbackControls = document.querySelector('.forward-controls');
   const overlayControls = document.querySelector('.output-controls');
   function placeDiagramControls() {
     const footer = document.querySelector('.diagram-footer');
     if (wideDiagram.matches) {
-      document.querySelector('.input-column').appendChild(playbackControls);
       document.querySelector('.output-column').appendChild(overlayControls);
     } else {
-      footer.prepend(playbackControls);
       footer.appendChild(overlayControls);
     }
     alignArchitectureImages();
@@ -1445,7 +1437,8 @@
   const featureLayout = new ResizeObserver(fitFeaturePanels);
   featureLayout.observe(document.querySelector('.maps-heading'));
   featureLayout.observe($('channels'));
-  new ResizeObserver(alignArchitectureImages).observe(document.querySelector('.hero'));
+  const diagramLayout = new ResizeObserver(alignArchitectureImages);
+  for (const selector of ['.hero', '.diagram-toolbar', '.diagram-footer']) diagramLayout.observe(document.querySelector(selector));
   new ResizeObserver(updateHeight).observe($('explorer'));
   window.addEventListener('resize', updateHeight);
   send('streamlit:componentReady', {apiVersion: 1});
