@@ -105,3 +105,25 @@ in the four-column uniform grid to inspect it; activation and color scales are u
 Example thumbnails and upload are below the comparison images. Uploads hide unavailable
 ground truth. Model details are collapsible; automatic forward-pass playback is disabled.
 The desktop diagram and its forward-pass animation remain available on wider screens.
+
+## Code and checks
+
+- `src/app.py`: Streamlit session and input handling.
+- `src/inference.py`: preprocessing, inference, and display encoding.
+- `src/ui/`: plain HTML, CSS, JavaScript, and the architecture SVG. No build step.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests
+node --check src/ui/explorer.js
+```
+
+Only the final inference payload is cached (8 inputs). Skip and concat views reuse
+source pixels. Layer, channel, and display controls run entirely in the browser.
+The forward-pass playback is illustrative and can be skipped immediately.
+
+Uploads are restricted server-side to PNG/JPEG, 5 MB, and 16 megapixels. Invalid
+images keep the previous input. The container limits WebSocket messages to 16 MB
+and enables compression. Checkpoints are bundled and loaded with `weights_only=True`.
+Pillow 12.3 is pinned within Streamlit’s `<13` compatibility range; remaining
+published Pillow advisories concern PDF/GIF/PPM/TIFF/EPS paths, excluded by the
+upload format allowlist. Hosting cold starts and network latency still apply.

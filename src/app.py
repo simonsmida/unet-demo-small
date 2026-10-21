@@ -1,10 +1,8 @@
 """Run inference in Python; browse the feature explorer locally in the browser."""
 from pathlib import Path
 import base64
-import gzip
 import hashlib
 import io
-from typing import Dict, List, Tuple
 
 import numpy as np
 from PIL import Image
@@ -12,7 +10,7 @@ import streamlit as st
 from streamlit.components.v1 import declare_component
 import torch
 
-from model import UNet
+from inference import encode_pixels, explorer_data, validate_upload
 
 torch.set_num_threads(2)
 st.set_page_config(page_title="U-Net Feature Explorer", layout="wide")
@@ -39,168 +37,14 @@ html, body, iframe { color-scheme: light !important; }
 ROOT = Path(__file__).resolve().parents[1]
 explorer_ui = declare_component("explorer_ui", path=str(ROOT / "src/ui"))
 
-LAYERS = {
-    "enc_l1_conv1": "Encoder 1 · Convolution 1",
-    "enc_l1_conv2": "Encoder 1 · Convolution 2",
-    "pool1": "Encoder 1 · Max pooling",
-    "enc_l2_conv1": "Encoder 2 · Convolution 1",
-    "enc_l2_conv2": "Encoder 2 · Convolution 2",
-    "pool2": "Encoder 2 · Max pooling",
-    "bottleneck_conv1": "Bottleneck · Convolution 1",
-    "bottleneck_conv2": "Bottleneck · Convolution 2",
-    "dec_l2_deconv": "Decoder 2 · Upsampling",
-    "dec_l2_skip": "Decoder 2 · Encoder skip",
-    "dec_l2_concat": "Decoder 2 · Concatenation",
-    "dec_l2_conv1": "Decoder 2 · Convolution 1",
-    "dec_l2_conv2": "Decoder 2 · Convolution 2",
-    "dec_l1_deconv": "Decoder 1 · Upsampling",
-    "dec_l1_skip": "Decoder 1 · Encoder skip",
-    "dec_l1_concat": "Decoder 1 · Concatenation",
-    "dec_l1_conv1": "Decoder 1 · Convolution 1",
-    "dec_l1_conv2": "Decoder 1 · Convolution 2",
-    "final_conv": "Output · 1 × 1 convolution",
-}
-
-STAGES = tuple(LAYERS)
-
-
-def load_model():
-    model = UNet()
-    weights = torch.load(ROOT / "files/model.pt", map_location="cpu", weights_only=True)
-    model.load_state_dict(weights, strict=True)
-    return model.eval()
-
-
-def preprocess(img: Image.Image, size: Tuple[int, int] = (128, 128)) -> torch.Tensor:
-    img = img.convert("L").resize(size, Image.Resampling.BILINEAR)
-    arr = np.asarray(img, dtype=np.float32) / 255.0
-    return torch.from_numpy(arr)[None, None]
-
-
-def register_stage_hooks(
-    model: torch.nn.Module, stages: List[str]
-) -> Tuple[Dict[str, torch.Tensor], List[torch.utils.hooks.RemovableHandle]]:
-    acts: Dict[str, torch.Tensor] = {}
-    handles: List[torch.utils.hooks.RemovableHandle] = []
-
-    for name, mod in model.named_modules():
-        if name in stages:
-            def _make_hook(layer_name: str):
-                def _hook(_m, _inp, out):
-                    acts[layer_name] = out.detach().cpu()
-                return _hook
-            handles.append(mod.register_forward_hook(_make_hook(name)))
-    return acts, handles
-
-
-def remove_hooks(handles: List[torch.utils.hooks.RemovableHandle]) -> None:
-    for h in handles:
-        h.remove()
-
-
-@st.cache_data(max_entries=8, show_spinner=False)
-def predict(image_bytes):
-    # Each inference owns its model and hooks; cached results are safe across sessions.
-    model = load_model()
-    with Image.open(io.BytesIO(image_bytes)) as image:
-        x = preprocess(image)
-    acts, handles = register_stage_hooks(model, list(STAGES))
-    # Capture the actual concatenation consumed by each decoder convolution.
-    for level in [2, 1]:
-        module = getattr(model, f"dec_l{level}_conv1")
-        def capture_concat(_module, inputs, level=level):
-            acts[f"dec_l{level}_concat"] = inputs[0].detach().cpu()
-        handles.append(module.register_forward_pre_hook(capture_concat))
-    try:
-        with torch.inference_mode():
-            probability = model(x).sigmoid()[0, 0].numpy()
-    finally:
-        remove_hooks(handles)
-    for level in [2, 1]:
-        acts[f"dec_l{level}_skip"] = acts[f"enc_l{level}_conv2"].relu()
-    return x[0, 0].numpy(), probability, {name: value[0].numpy() for name, value in acts.items()}
-
-
-
-def layer_block(layer):
-    if layer.startswith("enc") or layer.startswith("pool"):
-        return "Encoder"
-    if layer.startswith("bottleneck"):
-        return "Bottleneck"
-    return "Output" if layer == "final_conv" else "Decoder"
-
-
-def layer_note(layer):
-    if layer == "final_conv":
-        return "A 1 × 1 convolution produces one foreground logit per pixel. Sigmoid converts logits to probabilities."
-    if layer.endswith("_skip"):
-        return "Skip connections carry the encoder’s post-ReLU features unchanged."
-    if layer.endswith("_concat"):
-        return "Concatenation joins channels: upsampling first, encoder skip second. Values are not added."
-    if "deconv" in layer:
-        return "Upsampling restores resolution. Concatenation joins these maps with encoder detail."
-    if layer.startswith("pool"):
-        return "Pooling reduces detail and expands the area represented by each response."
-    if layer.startswith("dec"):
-        return "Decoder convolution combines coarse features with encoder detail. The view selects before or after ReLU."
-    if layer.startswith("bottleneck"):
-        return "Bottleneck convolution learns patterns at the coarsest resolution. The view selects before or after ReLU."
-    return "Convolution learns local patterns. The view selects before or after ReLU."
-
-
-def encode_pixels(array, compress=False):
-    pixels = np.ascontiguousarray(array, dtype=np.uint8).tobytes()
-    if compress:
-        pixels = gzip.compress(pixels, compresslevel=1, mtime=0)
-    return base64.b64encode(pixels).decode("ascii")
-
-
-def feature_view(values, signed):
-    """Scale for display without moving zero; keep real range values for the legend."""
-    values = values if signed else np.maximum(values, 0)
-    peaks = np.max(np.abs(values), axis=(1, 2))
-    scaled = np.divide(values, peaks[:, None, None], out=np.zeros_like(values),
-                       where=peaks[:, None, None] > 0)
-    pixels = np.rint(scaled * 127 + 128) if signed else np.rint(scaled * 255)
-    return {"pixels": encode_pixels(pixels, compress=True), "peaks": peaks.tolist(), "signed": signed}
-
-
-@st.cache_data(max_entries=8, show_spinner=False)
-def explorer_data(image_bytes):
-    image, probability, acts = predict(image_bytes)
-    features = []
-    for stage in STAGES:
-        values = acts[stage]
-        channels, height, width = values.shape
-        has_relu = "conv" in stage and "deconv" not in stage and stage != "final_conv"
-        nonnegative = stage.startswith("pool") or stage.endswith("_skip")
-        views = {"pre": feature_view(values, True), "post": feature_view(values, False)} if has_relu else {
-            "output": feature_view(values, not nonnegative)
-        }
-        if stage == "final_conv":
-            views = {
-                "pre": feature_view(values, True),
-                "post": {"pixels": encode_pixels(np.rint(probability[None] * 255), compress=True),
-                         "peaks": [1.0], "signed": False},
-            }
-        features.append({
-            "id": stage, "label": LAYERS[stage], "block": layer_block(stage),
-            "svg_id": stage, "note": layer_note(stage),
-            "channels": channels, "height": height, "width": width,
-            "views": views, "has_relu": has_relu, "has_sigmoid": stage == "final_conv",
-            "nonnegative": nonnegative,
-
-        })
-    return {
-        "encoding": "gzip",
-        "input": encode_pixels(image * 255),
-        "prediction": encode_pixels(probability >= 0.5),
-        "features": features,
-    }
+# Cache the final payload only; raw tensors and model hooks stay request-local.
+explorer_data = st.cache_data(max_entries=8, show_spinner=False)(explorer_data)
 
 
 examples = sorted(path.stem for path in (ROOT / "files/examples").glob("*.png")
                   if not path.stem.endswith("_mask"))
+
+
 @st.cache_data(show_spinner=False)
 def example_thumbnails():
     names = [examples[i] for i in np.linspace(0, len(examples) - 1, 18, dtype=int)]
@@ -222,21 +66,18 @@ st.session_state.setdefault("upload_bytes", None)
 
 def handle_input_request():
     request = st.session_state["explorer"]
-    if not request or request["event"] == st.session_state.get("input_event"):
+    if not isinstance(request, dict) or request.get("event") == st.session_state.get("input_event"):
         return
     st.session_state["input_error"] = None
-    st.session_state["input_event"] = request["event"]
-    if request["action"] == "example" and request.get("name") in examples:
+    st.session_state["input_event"] = request.get("event")
+    if request.get("action") == "example" and request.get("name") in examples:
         st.session_state["example"] = request["name"]
         st.session_state["upload_bytes"] = None
-    elif request["action"] == "upload":
-        candidate = base64.b64decode(request["bytes"])
+    elif request.get("action") == "upload":
         try:
-            with Image.open(io.BytesIO(candidate)) as image:
-                image.verify()
-            st.session_state["upload_bytes"] = candidate
-        except Exception:
-            st.session_state["input_error"] = "Please upload a valid PNG or JPEG image."
+            st.session_state["upload_bytes"] = validate_upload(request.get("bytes"))
+        except ValueError as error:
+            st.session_state["input_error"] = str(error)
 
 
 if st.session_state["upload_bytes"] is not None:
