@@ -41,7 +41,7 @@ h2 { font-size: 15px; font-weight: 600; letter-spacing: -.2px; line-height: 1.3;
   html, body { height: 100%; overflow-x: hidden; }
   #explorer { height: 100dvh; min-height: 610px; display: flex; flex-direction: column; }
   .header, .workspace { flex-shrink: 0; }
-  .hero { flex: 1; min-height: 280px; display: flex; flex-direction: column; justify-content: space-between; }
+  .hero { flex: 1; min-height: 280px; display: flex; flex-direction: column; justify-content: flex-start; }
   .architecture-row { flex-shrink: 0; }
   .diagram-footer { flex-shrink: 0; }
 }
@@ -174,21 +174,24 @@ img { background: #eef2f7; }
 
 .diagram-footer { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 0; margin-top: 8px; }
 .diagram-footer:not(:has(.output-controls)) { display: none; }
-.forward-controls { display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding-right: 12px; color: #64748b; font-size: 11px; }
+.forward-controls { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding-right: 12px; color: #64748b; font-size: 11px; }
 #forward-progress { display: inline-block; width: 36px; text-align: center; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .diagram-toolbar { display: grid; grid-template-columns: var(--diagram-divider-x, 96px) minmax(0, 1fr); align-items: center; min-height: 32px; margin-top: 6px; }
-.playback-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 7px; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+.step-button { width: 28px; height: 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.step-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.playback-button { width: 68px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 7px; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
 .playback-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .layer-info { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--line); }
 .layer-info > svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: #64748b; stroke-width: 1.5; }
 .layer-info .stage-note { margin: 0; }
 .overlay-value { min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
 
-#forward-toggle[aria-label="Replay forward pass"] { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
-#forward-toggle[aria-label="Replay forward pass"]:hover { background: #bbf7d0; border-color: #86efac; }
+#forward-toggle:not([aria-label="Skip forward-pass animation"]) { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+#forward-toggle:not([aria-label="Skip forward-pass animation"]):hover { background: #bbf7d0; border-color: #86efac; }
 .forward-preparing #diagram .stack, .forward-preparing #diagram .operation, .forward-preparing #hero-prediction { opacity: 0 !important; }
 #diagram .stack[data-forward-current="true"] .stack-frame { stroke: #f59e0b; opacity: 1; }
-.forward-playing #diagram .stack, .forward-playing #diagram .operation { pointer-events: none; }
+.forward-playing #diagram .stack, .forward-playing #diagram .operation,
+.forward-stepping #diagram .stack, .forward-stepping #diagram .operation { pointer-events: none; }
 .forward-awaiting-feature .selected-content, .forward-awaiting-feature .channel-navigation,
 .forward-awaiting-feature .grid-scroll, .forward-awaiting-feature #maps-info { visibility: hidden; }
 @media (max-width: 650px) { .diagram-footer { align-items: flex-start; flex-wrap: wrap; } }

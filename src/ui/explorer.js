@@ -12,7 +12,7 @@ let selectionVisible = true, selectedDiagramFace = null;
 let collapseDiagram = () => {};
 let selectionVersion = 0, sampleVersion = 0, updatingSample = false;
 let diagramPromise, inputTimeout;
-let forwardRun = 0, forwardPlaying = false;
+let forwardRun = 0, forwardPlaying = false, forwardStep = null, forwardIndex = 0;
 const forwardAnimations = new Set();
 function loadDiagram() {
   if (!diagramPromise) {
@@ -463,7 +463,7 @@ function renderDiagram(feature, svgText) {
       expandComponent(null);
     };
     svg.addEventListener('pointermove', event => {
-      if (forwardPlaying || $('simplified').checked) return;
+      if (forwardPlaying || forwardStep !== null || $('simplified').checked) return;
       const preview = event.target.closest('.hover-face');
       let target = preview?.sourceFace || event.target;
       const directFace = target.closest('.feature-face');
@@ -538,6 +538,7 @@ function renderDiagram(feature, svgText) {
     diagramFacesKey = facesKey;
   }
   alignArchitectureImages();
+  $('final_conv').querySelector('.output-label').textContent = sigmoidView === 'post' ? 'Probability' : 'Logits';
   $('diagram-activation-note').textContent = `Convolution faces: ${activationView === 'post' ? 'after' : 'before'} ReLU`;
   updateDiagramSelection();
   const references = {
@@ -649,7 +650,7 @@ document.addEventListener('click', event => {
   dismissSelection();
 });
 async function selectLayer(id, resetChannel = true, channel = null) {
-  if (forwardPlaying) finishForwardPass();
+  if (forwardPlaying || forwardStep !== null) finishForwardPass();
   if (updatingSample || !features.length) return;
   selectionVisible = true;
   const version = ++selectionVersion;
@@ -706,25 +707,92 @@ function showForwardFeature(feature, probability = false) {
   renderPreview();
   $('explorer').classList.remove('forward-awaiting-feature');
 }
+function updateForwardControls() {
+  const total = features.length + 1; // Tensor outputs, then sigmoid / binary prediction.
+  $('forward-progress').textContent = `${forwardIndex} / ${total}`;
+  $('forward-previous').disabled = updatingSample || (!forwardPlaying && forwardStep === null) || forwardIndex === 0;
+  $('forward-next').disabled = updatingSample || forwardStep === total;
+  $('forward-next').title = forwardStep === null && !forwardPlaying ? 'Start step-by-step' : 'Next step';
+  if (!forwardPlaying) {
+    $('forward-toggle').setAttribute('aria-label', forwardStep === null ? 'Replay forward pass' : 'Continue forward pass');
+    $('forward-toggle').title = forwardStep === null ? 'Replay forward pass' : 'Continue from this step';
+  }
+}
+function renderForwardStep(step) {
+  const svg = $('diagram').querySelector('svg');
+  const visible = new Set(features.slice(0, step).map(feature => feature.id));
+  svg.querySelectorAll('.stack').forEach(stack => {
+    const shown = visible.has(stack.id);
+    stack.style.opacity = shown ? '1' : '0';
+    stack.setAttribute('aria-hidden', String(!shown));
+    delete stack.dataset.forwardCurrent;
+  });
+  svg.querySelectorAll('.operation').forEach(operation => {
+    const edge = operation.querySelector('.edge');
+    const shown = edge.dataset.to ? visible.has(edge.dataset.to) : !edge.dataset.from ? step > 0 : step > features.length;
+    operation.style.opacity = shown ? '1' : '0';
+    operation.setAttribute('aria-hidden', String(!shown));
+    operation.setAttribute('tabindex', shown ? '0' : '-1');
+  });
+  $('hero-prediction').closest('figure').style.opacity = step > features.length ? '1' : '0';
+  forwardIndex = step;
+  $('forward-progress').title = step === 0 ? 'Input' : step > features.length
+    ? 'Sigmoid → threshold 0.5' : features[step - 1].label;
+  if (step) {
+    const feature = features[Math.min(step, features.length) - 1];
+    showForwardFeature(feature, step > features.length);
+    $(feature.svg_id).dataset.forwardCurrent = 'true';
+  } else {
+    selectionVisible = false;
+    updateDiagramSelection();
+    $('explorer').classList.add('forward-awaiting-feature');
+    $('stage-note').textContent = 'Input ready. The first convolution produces the first feature maps.';
+  }
+  updateForwardControls();
+}
+async function stepForward(direction) {
+  if (!features.length || updatingSample || mobileMode.matches) return;
+  const start = forwardStep ?? (forwardPlaying ? forwardIndex : 0);
+  const step = Math.max(0, Math.min(features.length + 1, start + direction));
+  finishForwardPass();
+  const run = forwardRun;
+  const version = ++selectionVersion;
+  const output = features[features.length - 1];
+  try {
+    await Promise.all(['pre', 'post'].map(view => decodeView(output, view, args.data.encoding)));
+    if (run !== forwardRun || version !== selectionVersion) return;
+    collapseDiagram();
+    forwardStep = step;
+    $('explorer').classList.add('forward-stepping');
+    renderForwardStep(step);
+  } catch (error) { $('status').textContent = error.message; }
+}
 function finishForwardPass(showOutput = false) {
   ++forwardRun;
   forwardPlaying = false;
+  forwardStep = null;
   for (const animation of forwardAnimations) animation.cancel();
   forwardAnimations.clear();
   const svg = $('diagram').querySelector('svg');
   if (svg) {
-    svg.querySelectorAll('.stack, .operation').forEach(node => { node.style.opacity = '1'; });
+    svg.querySelectorAll('.stack, .operation').forEach(node => {
+      node.style.opacity = '1';
+      node.removeAttribute('aria-hidden');
+      if (node.classList.contains('operation')) node.setAttribute('tabindex', '0');
+    });
     svg.querySelectorAll('.edge[mask]').forEach(edge => edge.removeAttribute('mask'));
     svg.querySelectorAll('[data-forward-mask]').forEach(mask => mask.remove());
     svg.querySelectorAll('[data-forward-current]').forEach(stack => delete stack.dataset.forwardCurrent);
   }
   $('hero-prediction').closest('figure').style.opacity = '1';
-  $('explorer').classList.remove('forward-playing', 'forward-preparing', 'forward-awaiting-feature');
-  $('forward-progress').textContent = `${features.length} / ${features.length}`;
+  $('explorer').classList.remove('forward-playing', 'forward-stepping', 'forward-preparing', 'forward-awaiting-feature');
+  forwardIndex = features.length + 1;
+  updateForwardControls();
   $('forward-progress').title = 'Illustrative timing of the model’s forward pass';
   $('forward-toggle').setAttribute('aria-label', 'Replay forward pass');
   $('forward-toggle').title = 'Replay forward pass';
   $('forward-toggle').querySelector('path').setAttribute('d', 'M8 5v14l11-7z');
+  $('forward-toggle').querySelector('span').textContent = 'Play';
   if (showOutput && features.length) showForwardFeature(features[features.length - 1], true);
 }
 async function animateForward(node, frames, duration) {
@@ -762,6 +830,8 @@ async function revealOperation(operation, run) {
   $('diagram').querySelector('defs').appendChild(mask);
   edge.setAttribute('mask', `url(#${mask.id})`);
   operation.style.opacity = '1';
+  operation.removeAttribute('aria-hidden');
+  operation.setAttribute('tabindex', '0');
   await Promise.all([
     animateForward(trace, [{strokeDashoffset: String(length)}, {strokeDashoffset: '0'}], 220),
     animateForward(caption, [{opacity: 0}, {opacity: 1}], 220)
@@ -771,6 +841,7 @@ async function revealOperation(operation, run) {
 }
 async function playForwardPass() {
   if (!features.length || updatingSample || mobileMode.matches) return;
+  const start = forwardStep !== null && forwardStep < features.length + 1 ? forwardStep : 0;
   finishForwardPass();
   ++selectionVersion;
   const run = forwardRun;
@@ -791,12 +862,13 @@ async function playForwardPass() {
     $('forward-toggle').setAttribute('aria-label', 'Skip forward-pass animation');
     $('forward-toggle').title = 'Skip animation and show all outputs';
     $('forward-toggle').querySelector('path').setAttribute('d', 'M6 6h12v12H6z');
-    svg.querySelectorAll('.stack, .operation').forEach(node => { node.style.opacity = '0'; });
-    $('hero-prediction').closest('figure').style.opacity = '0';
+    $('forward-toggle').querySelector('span').textContent = 'Skip';
+    renderForwardStep(start);
     // The backend's stage list follows model.forward(). Skip stages copy saved encoder outputs.
-    for (const [index, feature] of features.entries()) {
+    for (const [index, feature] of passFeatures.entries()) {
+      if (index < start) continue;
       if (run !== forwardRun) return;
-      $('forward-progress').textContent = `${index + 1} / ${features.length}`;
+      $('forward-progress').textContent = `${index + 1} / ${features.length + 1}`;
       $('forward-progress').title = feature.label;
       const incoming = operations.filter(operation => {
         const edge = operation.querySelector('.edge');
@@ -808,7 +880,10 @@ async function playForwardPass() {
       svg.querySelectorAll('[data-forward-current]').forEach(stack => delete stack.dataset.forwardCurrent);
       const stack = $(feature.svg_id);
       stack.dataset.forwardCurrent = 'true';
+      stack.removeAttribute('aria-hidden');
       showForwardFeature(feature);
+      forwardIndex = index + 1;
+      updateForwardControls();
       await animateForward(stack, [{opacity: 0}, {opacity: 1}], 180);
       if (run !== forwardRun) return;
       stack.style.opacity = '1';
@@ -817,7 +892,7 @@ async function playForwardPass() {
       const edge = operation.querySelector('.edge');
       return !edge.dataset.to && !edge.getAttribute('d').startsWith('M0 ');
     });
-    $('forward-progress').textContent = `${features.length} / ${features.length}`;
+    $('forward-progress').textContent = `${features.length + 1} / ${features.length + 1}`;
     $('forward-progress').title = 'Sigmoid → threshold 0.5';
     if (output) await revealOperation(output, run);
     if (run !== forwardRun) return;
@@ -828,7 +903,7 @@ async function playForwardPass() {
   }
 }
 function requestInput(action, extra = {}) {
-  if (forwardPlaying) finishForwardPass();
+  if (forwardPlaying || forwardStep !== null) finishForwardPass();
   $('status').textContent = 'Loading…';
   $('examples').querySelectorAll('button').forEach(button => button.disabled = true);
   $('upload').disabled = true;
@@ -872,6 +947,8 @@ $('opacity').oninput = () => {
   cancelAnimationFrame(maskFrame);
   maskFrame = requestAnimationFrame(renderMasks);
 };
+$('forward-previous').onclick = () => stepForward(-1);
+$('forward-next').onclick = () => stepForward(1);
 $('forward-toggle').onclick = () => {
   if (forwardPlaying) finishForwardPass(true);
   else playForwardPass().catch(error => { $('status').textContent = error.message; });
@@ -916,7 +993,7 @@ window.addEventListener('message', async event => {
   const changed = sampleId !== nextArgs.sample_id || referenceSource !== nextArgs.reference;
   const version = changed ? ++sampleVersion : sampleVersion;
   if (changed) {
-    if (forwardPlaying) finishForwardPass();
+    if (forwardPlaying || forwardStep !== null) finishForwardPass();
     updatingSample = true;
     ++selectionVersion;
     $('explorer').setAttribute('aria-busy', 'true');
@@ -979,6 +1056,36 @@ function setControlsDisabled(disabled) {
 }
 setControlsDisabled(true);
 if (!mobileMode.matches) loadDiagram().catch(error => { $('status').textContent = error.message; });
+function setDiagramDepth(svg, extra) {
+  if (!svg.layoutGeometry) {
+    const stacks = [...svg.querySelectorAll('.stack')].map(node => {
+      const matrix = node.transform.baseVal.getItem(0).matrix;
+      return {node, x: matrix.e, y: matrix.f, center: matrix.f + .29 * Number(node.dataset.displaySize)};
+    });
+    const centers = new Map(stacks.map(item => [item.node.id, item.center]));
+    const operations = [...svg.querySelectorAll('.operation')].map(node => {
+      const edge = node.querySelector('.edge');
+      const points = edge.getAttribute('d').match(/-?\d+(?:\.\d+)?/g).map(Number);
+      const caption = node.querySelector('.edge-caption');
+      return {node, edge, points, caption, y: Number(caption.getAttribute('y'))};
+    });
+    const inputY = Number(svg.dataset.inputY);
+    const lastY = Math.max(...centers.values());
+    const bottom = svg.viewBox.baseVal.y + svg.viewBox.baseVal.height;
+    svg.layoutGeometry = {stacks, centers, operations, inputY, lastY, bottom};
+  }
+  if (svg.layoutGeometry.extra === extra) return;
+  svg.layoutGeometry.extra = extra;
+  const {stacks, centers, operations, inputY, lastY} = svg.layoutGeometry;
+  const shift = id => ((centers.get(id) ?? inputY) - inputY) / (lastY - inputY) * extra;
+  stacks.forEach(({node, x, y}) => node.setAttribute('transform', `translate(${x} ${y + shift(node.id)})`));
+  operations.forEach(({node, edge, points, caption, y}) => {
+    const from = shift(edge.dataset.from), to = shift(edge.dataset.to);
+    const [x1, y1, x2, y2] = points;
+    node.querySelectorAll('path').forEach(path => path.setAttribute('d', `M${x1} ${y1 + from} L${x2} ${y2 + to}`));
+    caption.setAttribute('y', String(y + (from + to) / 2));
+  });
+}
 function alignArchitectureImages() {
   if (mobileMode.matches) return;
   const row = document.querySelector('.architecture-row');
@@ -996,18 +1103,22 @@ function alignArchitectureImages() {
   const imageSize = Math.min(96, Math.max(72, availableHeight * .28));
   const sideWidth = innerWidth >= 1101 ? 2 * imageSize + 24 : imageSize;
   const wideLayout = innerWidth >= 1101;
-  const rowLimit = wideLayout ? availableWidth - 2 * Math.max(0, 180 - imageSize - 12) : availableWidth;
+  const rowLimit = wideLayout ? availableWidth - 2 * Math.max(0, 196 - imageSize - 12) : availableWidth;
   const bounds = svg.viewBox.baseVal;
-  const bottom = bounds.y + bounds.height;
+  setDiagramDepth(svg, svg.layoutGeometry?.extra ?? 0);
+  const baseBottom = svg.layoutGeometry.bottom;
+  const minimumBottom = baseBottom + 160;
   const inputY = Number(svg.dataset.inputY);
   const scale = Math.min((rowLimit - 2 * sideWidth) / bounds.width,
-    Math.max(1, availableHeight - imageSize / 2) / (bottom - inputY));
+    Math.max(1, availableHeight - imageSize / 2) / (minimumBottom - inputY));
+  const bottom = Math.max(minimumBottom, inputY + (availableHeight - imageSize / 2) / scale);
+  setDiagramDepth(svg, bottom - baseBottom);
   row.style.setProperty('--hero-image-size', `${imageSize}px`);
   row.style.setProperty('--hero-side-width', `${sideWidth}px`);
   const rowWidth = scale * bounds.width + 2 * sideWidth;
   row.style.width = `${rowWidth}px`;
   const dividerX = wideLayout
-    ? (availableWidth - rowWidth) / 2 + imageSize + 12 : 180;
+    ? (availableWidth - rowWidth) / 2 + imageSize + 12 : 196;
   hero.style.setProperty('--diagram-divider-x', `${dividerX}px`);
   // Input and prediction centers stay aligned with the first and last arrows.
   const top = Math.max(0, inputY - imageSize / (2 * scale));
@@ -1051,7 +1162,7 @@ blocks.forEach(block => {
   $('mobile-blocks').appendChild(button);
 });
 function applyResponsiveLayout() {
-  if (forwardPlaying) finishForwardPass();
+  if (forwardPlaying || forwardStep !== null) finishForwardPass();
   if (mobileMode.matches) {
     $('mobile-layer-slot').appendChild(layerControls);
     $('mobile-activation-slot').appendChild(activationControl);

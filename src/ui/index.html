@@ -41,8 +41,10 @@
       </div>
     </div>
     <div class="diagram-toolbar">
-      <div class="forward-controls" title="Forward-pass illustration using computed outputs. Animation timing does not represent inference speed.">
-        <button id="forward-toggle" class="playback-button" aria-label="Replay forward pass" title="Replay forward pass"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Forward pass</span></button>
+      <div class="forward-controls" role="group" aria-label="Forward pass controls" title="Forward-pass illustration using computed outputs. Animation timing does not represent inference speed.">
+        <button id="forward-toggle" class="playback-button" aria-label="Replay forward pass" title="Replay forward pass"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Play</span></button>
+        <button id="forward-previous" class="step-button" aria-label="Previous forward-pass step" title="Previous step" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button>
+        <button id="forward-next" class="step-button" aria-label="Next forward-pass step" title="Start step-by-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5 7 7-7 7"/></svg></button>
         <span id="forward-progress" role="status" aria-live="polite">0 / 19</span>
       </div>
       <div class="layer-info" role="note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg><p id="stage-note" class="stage-note"></p></div>

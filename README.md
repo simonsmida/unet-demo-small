@@ -90,12 +90,17 @@ arrow is traced before its output appears. Encoder skips are copies, and both in
 arrive before concatenation is revealed. Sigmoid and thresholding precede prediction.
 The grid, selected preview and layer controls follow each revealed tensor. The final
 view shows sigmoid probabilities; skipping also jumps to that output.
+The controls support Play/Skip and Previous/Next stepping. There are 20 steps:
+19 tensor outputs, then sigmoid and the binary prediction. Play continues from a
+manual step. Previous/Next keep the diagram, grid, preview, and activation view in sync.
 Timing is illustrative, not measured inference latency. Replay/skip is available;
 selecting a layer or channel ends the illustration. Reduced-motion preferences skip it.
 
 The three resolution levels use mirrored convolution pairs with a centered bottleneck.
 Pooling arrows point straight down and upsampling arrows straight up; saved skip paths
-remain horizontal and their captions share one aligned column.
+remain horizontal and their captions share one aligned column. Vertical spacing
+adapts to the available height without stretching feature-map planes. The toolbar
+stays 6 px below the diagram.
 
 ## Mobile
 
