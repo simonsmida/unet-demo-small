@@ -239,10 +239,10 @@
 
   }
   @media (min-width: 651px) {
-    .simplified .input-column, .simplified .output-column { display: flex; flex-direction: column; }
+    /* Preserve layout space so simplifying never changes diagram geometry. */
     .simplified .input-tools, .simplified .output-comparison, .simplified .output-controls,
-    .simplified .input-column::after, .simplified .output-column::after { display: none; }
-    .simplified .layer-info { display: none; }
+    .simplified .input-column::after, .simplified .output-column::after { visibility: hidden; }
+    .simplified .layer-info { visibility: hidden; }
     .simplified #diagram .feature-plane image { display: none; }
     .simplified #diagram .feature-plane > rect:not(.face-border) { fill: #bedaf4; }
     .simplified #diagram .face-border { stroke: #8bb7dc; stroke-width: .7; }
@@ -1371,9 +1371,9 @@
     const availableHeight = hero.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
       - footer.offsetHeight - toolbar.offsetHeight - verticalGaps;
     const imageSize = Math.min(96, Math.max(72, availableHeight * .28));
-    const sideWidth = innerWidth >= 1101 && !$('simplified').checked ? 2 * imageSize + 24 : imageSize;
-    const wideDetailed = innerWidth >= 1101 && !$('simplified').checked;
-    const rowLimit = wideDetailed ? availableWidth - 2 * Math.max(0, 180 - imageSize - 12) : availableWidth;
+    const sideWidth = innerWidth >= 1101 ? 2 * imageSize + 24 : imageSize;
+    const wideLayout = innerWidth >= 1101;
+    const rowLimit = wideLayout ? availableWidth - 2 * Math.max(0, 180 - imageSize - 12) : availableWidth;
     const bounds = svg.viewBox.baseVal;
     const bottom = bounds.y + bounds.height;
     const inputY = Number(svg.dataset.inputY);
@@ -1383,7 +1383,7 @@
     row.style.setProperty('--hero-side-width', `${sideWidth}px`);
     const rowWidth = scale * bounds.width + 2 * sideWidth;
     row.style.width = `${rowWidth}px`;
-    const dividerX = wideDetailed
+    const dividerX = wideLayout
       ? (availableWidth - rowWidth) / 2 + imageSize + 12 : 180;
     hero.style.setProperty('--diagram-divider-x', `${dividerX}px`);
     // Input and prediction centers stay aligned with the first and last arrows.
