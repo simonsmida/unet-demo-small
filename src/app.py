@@ -35,7 +35,8 @@ html, body, iframe { color-scheme: light !important; }
 </style>""", unsafe_allow_html=True)
 
 ROOT = Path(__file__).resolve().parents[1]
-explorer_ui = declare_component("explorer_ui", path=str(ROOT / "src/ui"))
+# The v2 payload reuses source views; refresh older iframes when upgrading.
+explorer_ui = declare_component("explorer_v2", path=str(ROOT / "src/ui"))
 
 # Cache the final payload only; raw tensors and model hooks stay request-local.
 explorer_data = st.cache_data(max_entries=8, show_spinner=False)(explorer_data)
