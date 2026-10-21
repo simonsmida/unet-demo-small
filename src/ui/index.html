@@ -372,6 +372,7 @@
   <div class="workspace">
     <section class="panel selected-panel" aria-labelledby="selected-heading">
       <h2 id="selected-heading">Selected feature map</h2>
+      <button id="inspect-kernel" class="kernel-open" hidden>Inspect kernel</button>
       <div id="mobile-activation-slot" class="mobile-only"></div>
       <div class="selected-content">
         <figure class="preview">
@@ -410,6 +411,7 @@
 
   </div>
 </main>
+<script src="kernel.js"></script>
 <script>
   const $ = id => document.getElementById(id);
   const blocks = ['Encoder', 'Bottleneck', 'Decoder', 'Output'];
@@ -984,6 +986,7 @@
   function renderPreview() {
     updateDiagramSelection();
     const feature = currentFeature();
+    $('inspect-kernel').hidden = !(feature.has_relu || feature.has_sigmoid);
     $('preview').src = channelImage(feature, activeChannel);
     $('preview').alt = `${feature.label}, channel ${activeChannel + 1}`;
     $('selected-size').textContent = `${feature.width} × ${feature.height}`;
@@ -1295,6 +1298,7 @@
   window.addEventListener('message', async event => {
     if (event.source !== window.parent || event.data.type !== 'streamlit:render') return;
     const nextArgs = event.data.args;
+    kernelInspector.receive(nextArgs.kernel);
     const changed = sampleId !== nextArgs.sample_id || referenceSource !== nextArgs.reference;
     const version = changed ? ++sampleVersion : sampleVersion;
     if (changed) {
@@ -1354,6 +1358,11 @@
   function setControlsDisabled(disabled) {
     document.querySelectorAll('button, select, input').forEach(control => control.disabled = disabled);
   }
+  $('inspect-kernel').onclick = () => {
+    if (forwardPlaying) finishForwardPass();
+    kernelInspector.open(currentFeature(), activeChannel, (event) =>
+      send('streamlit:setComponentValue', {value: {action: 'kernel', layer: activeLayer, channel: activeChannel, event}}));
+  };
   setControlsDisabled(true);
   if (!mobileMode.matches) loadDiagram().catch(error => { $('status').textContent = error.message; });
   function alignArchitectureImages() {

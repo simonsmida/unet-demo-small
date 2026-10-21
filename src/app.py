@@ -121,6 +121,37 @@ def predict(image_bytes):
     return x[0, 0].numpy(), probability, {name: value[0].numpy() for name, value in acts.items()}
 
 
+@st.cache_data(max_entries=4, show_spinner=False)
+def convolution_data(image_bytes, layer, channel):
+    """Full-precision tensors for one output filter, loaded only on request."""
+    model = load_model()
+    module = getattr(model, layer)
+    captured = {}
+
+    def capture(_, inputs, output):
+        captured["input"] = inputs[0][0].detach().numpy()
+        captured["output"] = output[0, channel].detach().numpy()
+
+    handle = module.register_forward_hook(capture)
+    try:
+        with torch.inference_mode():
+            model(preprocess(Image.open(io.BytesIO(image_bytes))))
+    finally:
+        handle.remove()
+
+    def pack(values):
+        raw = np.asarray(values, dtype="<f4").tobytes()
+        return base64.b64encode(gzip.compress(raw, compresslevel=1, mtime=0)).decode("ascii")
+
+    inputs = captured["input"]
+    return {
+        "layer": layer, "channel": channel, "shape": list(inputs.shape),
+        "kernel_size": module.kernel_size[0], "padding": module.padding[0],
+        "weights": pack(module.weight[channel].detach().numpy()),
+        "inputs": pack(inputs), "output": pack(captured["output"]),
+        "bias": module.bias[channel].item(),
+    }
+
 
 def layer_block(layer):
     if layer.startswith("enc") or layer.startswith("pool"):
@@ -254,7 +285,19 @@ except Exception as error:
     st.error(f"Could not process the image: {error}")
     st.stop()
 
+kernel_request = st.session_state.get("explorer") or {}
+kernel = None
+if kernel_request.get("action") == "kernel":
+    layer = kernel_request.get("layer")
+    channel = kernel_request.get("channel")
+    feature = next((item for item in data["features"] if item["id"] == layer), None)
+    if feature and (feature["has_relu"] or feature["has_sigmoid"]):
+        if isinstance(channel, int) and 0 <= channel < feature["channels"]:
+            kernel = convolution_data(image_bytes, layer, channel)
+            kernel["event"] = kernel_request["event"]
+
 explorer_ui(
+    kernel=kernel,
     sample_id=hashlib.sha256(image_bytes).hexdigest(), data=data,
     reference=encode_pixels(reference) if reference is not None else None,
     examples=example_thumbnails(),

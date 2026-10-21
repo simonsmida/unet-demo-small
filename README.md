@@ -105,3 +105,16 @@ in the four-column uniform grid to inspect it; activation and color scales are u
 Example thumbnails and upload are below the comparison images. Uploads hide unavailable
 ground truth. Model details are collapsible; automatic forward-pass playback is disabled.
 The desktop diagram and its forward-pass animation remain available on wider screens.
+
+## Local kernel-inspection experiment
+
+Select a convolution and an output channel, then choose **Inspect kernel** below the
+selected-map title. The optional view shows the actual learned weights, input patch,
+channel contribution, bias, and output before/after activation. Click an image or
+scrub the pixel slider; **Build output** reveals the map with pause/resume.
+
+Deeper filters sum all input-channel contributions. Changing the inspected input
+channel changes the displayed slice, not the complete output. Values use full-precision
+tensors with zero padding and PyTorch cross-correlation. Rounded labels and display
+scales do not enter the calculation. Pooling and transposed convolutions are outside
+this inspector. No model weights or evaluation results are changed.
