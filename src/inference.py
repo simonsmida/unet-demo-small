@@ -179,5 +179,3 @@ def validate_upload(encoded):
     except (binascii.Error, UnicodeError, UnidentifiedImageError, OSError, Image.DecompressionBombError) as error:
         raise ValueError("Please upload a valid PNG or JPEG image.") from error
     return candidate
-
-
