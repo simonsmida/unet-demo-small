@@ -792,7 +792,7 @@ function finishForwardPass(showOutput = false) {
   $('forward-toggle').setAttribute('aria-label', 'Replay forward pass');
   $('forward-toggle').title = 'Replay forward pass';
   $('forward-toggle').querySelector('path').setAttribute('d', 'M8 5v14l11-7z');
-  $('forward-toggle').querySelector('span').textContent = 'Play';
+  $('forward-toggle').querySelector('span').textContent = 'Forward pass';
   if (showOutput && features.length) showForwardFeature(features[features.length - 1], true);
 }
 async function animateForward(node, frames, duration) {
@@ -872,7 +872,7 @@ async function playForwardPass() {
       $('forward-progress').title = feature.label;
       const incoming = operations.filter(operation => {
         const edge = operation.querySelector('.edge');
-        return edge.dataset.to === feature.id || (index === 0 && !edge.dataset.from && edge.getAttribute('d').startsWith('M0 '));
+        return edge.dataset.to === feature.id;
       });
       // Both concat inputs must arrive before the combined tensor is revealed.
       await Promise.all(incoming.map(operation => revealOperation(operation, run)));
@@ -890,7 +890,7 @@ async function playForwardPass() {
     }
     const output = operations.find(operation => {
       const edge = operation.querySelector('.edge');
-      return !edge.dataset.to && !edge.getAttribute('d').startsWith('M0 ');
+      return edge.dataset.from === outputFeature.id && !edge.dataset.to;
     });
     $('forward-progress').textContent = `${features.length + 1} / ${features.length + 1}`;
     $('forward-progress').title = 'Sigmoid → threshold 0.5';

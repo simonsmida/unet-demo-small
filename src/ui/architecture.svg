@@ -157,13 +157,13 @@
   <g class="operation" data-operation="conv" tabindex="0" role="img" aria-label="3 × 3 convolution · stride 1 · padding 1 · followed by ReLU. The activation selector chooses before or after ReLU.">
     <title>3 × 3 convolution · stride 1 · padding 1 · followed by ReLU. The activation selector chooses before or after ReLU.</title>
     <path class="operation-hit" d="M0 180 L84 180" />
-    <path class="edge" d="M0 180 L84 180" stroke="#25834b" marker-end="url(#arrow-conv)" />
+    <path class="edge" d="M0 180 L84 180" stroke="#25834b" marker-end="url(#arrow-conv)" data-to="enc_l1_conv1" />
     <text class="edge-caption" x="42" y="171" style="fill:#25834b;text-anchor:middle;font-size:22px">Conv</text>
   </g>
   <g class="operation" data-operation="output" tabindex="0" role="img" aria-label="Apply sigmoid to the logits, then threshold probabilities at 0.5 to obtain the binary prediction.">
     <title>Apply sigmoid to the logits, then threshold probabilities at 0.5 to obtain the binary prediction.</title>
     <path class="operation-hit" d="M2654.56 180 L2708.56 180" />
-    <path class="edge" d="M2654.56 180 L2708.56 180" stroke="#2563eb" marker-end="url(#arrow-output)" />
+    <path class="edge" d="M2654.56 180 L2708.56 180" stroke="#2563eb" marker-end="url(#arrow-output)" data-from="final_conv" />
     <text class="edge-caption" x="2681.56" y="171" style="fill:#2563eb;text-anchor:middle;font-size:22px">σ</text>
   </g>
   <g id="enc_l1_conv1" class="stack" data-channels="16" data-height="128" data-width="128" data-visible-channels="0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15" transform="translate(94 140.56)" data-operation="conv" data-step="2" data-display-size="136" style="--plane-x:0.4462;--plane-skew:-0.1275;--plane-y:0.7437">

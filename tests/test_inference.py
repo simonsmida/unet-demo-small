@@ -3,6 +3,7 @@ import base64
 import gzip
 import io
 import unittest
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -55,6 +56,16 @@ class InferenceTests(unittest.TestCase):
             actual = list(pool.map(predict, images))
         for reference, (_, probability, _) in zip(expected, actual):
             np.testing.assert_array_equal(reference, probability)
+
+    def test_diagram_has_explicit_input_and_output_connections(self):
+        svg = ET.parse(ROOT / 'src/ui/architecture.svg')
+        edges = svg.findall('.//{http://www.w3.org/2000/svg}path[@class="edge"]')
+        incoming = [edge for edge in edges if not edge.get('data-from')]
+        outgoing = [edge for edge in edges if not edge.get('data-to')]
+        self.assertEqual(len(incoming), 1)
+        self.assertEqual(incoming[0].get('data-to'), STAGES[0])
+        self.assertEqual(len(outgoing), 1)
+        self.assertEqual(outgoing[0].get('data-from'), STAGES[-1])
 
     def test_upload_validation(self):
         for format in ('PNG', 'JPEG'):
