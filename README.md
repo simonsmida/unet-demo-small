@@ -85,6 +85,29 @@ in the reported validation score. The 18 thumbnail choices are a browsing subset
 
 ## Forward-pass illustration
 
+On mobile, **Forward pass** opens a focused operation-by-operation walkthrough.
+The initial card shows the input and optional automatic reference only. Play or
+step through 19 stages, pause to inspect channels, or choose **Show prediction**.
+The final comparison shows input, binary prediction and the available reference.
+Manual stepping keeps the threshold stage open until **Compare results** is chosen.
+
+The mobile sequence omits display-only skip copies, groups each convolution with
+its ReLU, and separates logits, sigmoid and threshold 0.5. Concatenation shows both
+real source groups in tensor order (upsampled, then encoder), including channels
+from both halves. Thumbnail copies reuse their source pixels and color scales.
+The full grid and selected preview follow the current tensor. Before/after
+activation inspection pauses playback; resuming uses actual post-ReLU inputs.
+Reference masks never enter the model. Playback uses the already computed tensors,
+with no network requests between steps. Animation timing is explanatory.
+
+Mobile controls and card height stay fixed through playback. Reduced-motion users
+step through snapshots. Changing the input cancels playback and starts a new card.
+The desktop SVG and its playback remain available above the mobile breakpoint.
+The model-upload prototype is kept on its separate branch.
+
+Check the mobile stage definitions against the real inference metadata:
+`PYTHON=path/to/python node tests/test_mobile_pass.mjs`.
+
 New inputs replay the backend stage order using the computed tensors. Each operation
 arrow is traced before its output appears. Encoder skips are copies, and both inputs
 arrive before concatenation is revealed. Sigmoid and thresholding precede prediction.

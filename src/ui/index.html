@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main id="explorer" class="loading" aria-busy="true">
+<main id="explorer" class="loading" aria-busy="true" data-mobile-phase="ready">
   <p id="status" role="status" aria-live="polite">Loading sample…</p>
   <header class="header">
     <h1>U-Net Feature Explorer</h1>
@@ -17,6 +17,19 @@
     <details id="mobile-model-details" class="mobile-only"><summary>Model details</summary></details>
   </header>
   <section class="hero panel" aria-label="U-Net architecture">
+    <div class="mobile-only mobile-pass-heading"><h2 id="pass-heading">From image to segmentation</h2><span id="pass-progress" aria-label="Forward-pass progress">0 / 19</span></div>
+    <div id="mobile-pass-body" class="mobile-only">
+      <div id="pass-ready">
+        <div class="pass-start-images">
+          <figure><img id="pass-input" alt="Input image" width="128" height="128"><figcaption>Input</figcaption></figure>
+          <figure id="pass-reference-figure"><img id="pass-reference" alt="Automatic reference mask, not an input to the network" width="128" height="128"><figcaption>Ground truth <span>Automatic reference</span></figcaption></figure>
+        </div>
+        <p class="pass-start-note">Follow the image through the network.<br>The reference mask is only for comparison.</p>
+      </div>
+      <div id="pass-stage" hidden></div>
+      <p id="pass-note" role="status" aria-live="off"></p>
+    </div>
+    <div id="mobile-result" class="mobile-only"></div>
     <div class="architecture-row">
       <div class="input-column">
       <figure id="input-figure">
@@ -56,6 +69,14 @@
             <label class="opacity-control" title="Off shows binary masks. Increase to overlay the masks on the input image."><span class="overlay-label">Mask overlay</span><input id="opacity" type="range" min="0" max="1" step="0.05" value="0" aria-label="Mask overlay"><output id="overlay-value" class="overlay-value" for="opacity">Off</output></label>
           </div>
     </div>
+    <div id="mobile-sample-slot" class="mobile-only"></div>
+    <div class="mobile-only mobile-pass-controls">
+      <button id="pass-previous" class="icon" aria-label="Previous forward-pass step" disabled><svg viewBox="0 0 24 24"><path d="m14 5-7 7 7 7"/></svg></button>
+      <button id="pass-play" class="pass-play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>Forward pass</span></button>
+      <button id="pass-next" class="icon" aria-label="Next forward-pass step"><svg viewBox="0 0 24 24"><path d="m10 5 7 7-7 7"/></svg></button>
+      <button id="pass-finish" class="pass-finish">Show prediction</button>
+    </div>
+    <p class="mobile-only pass-footnote">Actual model outputs · replayed slowly for explanation</p>
   </section>
   <nav id="mobile-navigation" class="mobile-only panel" aria-label="Explore network layers">
     <div id="mobile-blocks" class="mobile-tabs" role="group" aria-label="Network block"></div>
@@ -102,6 +123,6 @@
 
   </div>
 </main>
-<script src="explorer.js"></script>
+<script type="module" src="explorer.js"></script>
 </body>
 </html>

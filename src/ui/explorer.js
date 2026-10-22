@@ -1,6 +1,9 @@
+import { mobileSteps, renderMobileStep } from './mobile-pass.mjs';
+
 const $ = id => document.getElementById(id);
 const blocks = ['Encoder', 'Bottleneck', 'Decoder', 'Output'];
 const mobileMode = matchMedia('(max-width: 650px)');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let args, features = [], activeLayer = 'enc_l1_conv1', activeChannel = 0;
 let activationView = 'post';
 let sigmoidView = 'pre';
@@ -14,6 +17,8 @@ let selectionVersion = 0, sampleVersion = 0, updatingSample = false;
 let diagramPromise, inputTimeout;
 let forwardRun = 0, forwardPlaying = false, forwardStep = null, forwardIndex = 0;
 const forwardAnimations = new Set();
+let mobilePlan = [], mobileIndex = 0, mobilePlaying = false;
+let mobileTimer, mobileWake;
 function loadDiagram() {
   if (!diagramPromise) {
     diagramPromise = fetch('./architecture.svg').then(response => {
@@ -28,6 +33,8 @@ function prepareDiagramViews(items, encoding) {
   return Promise.all(items.flatMap(feature => {
     if (feature.id.endsWith('_concat') || feature.id.endsWith('_skip')) return [];
     const names = new Set([viewName(feature)]);
+    if (mobileMode.matches && feature.has_relu) names.add('post');
+    if (mobileMode.matches && feature.has_sigmoid) { names.add('pre'); names.add('post'); }
     // Encoder copies always carry post-ReLU values, even in the before-ReLU view.
     if (/^enc_l[12]_conv2$/.test(feature.id)) names.add('post');
     return [...names].map(name => decodeView(feature, name, encoding));
@@ -98,9 +105,10 @@ function channelSource(feature, channel) {
   }
   return {feature, channel, name: viewName(feature)};
 }
-function channelImage(feature, channel) {
+function channelImage(feature, channel, forcedView = null) {
   // Concatenation copies channels. Keep their source colors and per-channel scale.
   const source = channelSource(feature, channel);
+  if (forcedView && !feature.id.endsWith('_concat') && !feature.id.endsWith('_skip')) source.name = forcedView;
   ({feature, channel} = source);
   const name = source.name;
   const view = feature.views[name];
@@ -153,24 +161,33 @@ function renderSelectors(feature) {
   $('mobile-blocks').querySelectorAll('button').forEach(button =>
     button.setAttribute('aria-pressed', String(button.dataset.block === feature.block)));
   const select = $('layer');
-  select.replaceChildren();
-  let lastGroup;
-  for (const item of features.filter(item => item.block === feature.block)) {
-    const groupName = item.label.split(' · ')[0];
-    if (!lastGroup || lastGroup.label !== groupName) {
-      lastGroup = document.createElement('optgroup');
-      lastGroup.label = groupName;
-      select.appendChild(lastGroup);
+  const choices = navigationFeatures().filter(item => item.block === feature.block);
+  const key = choices.map(item => item.id).join(',');
+  if (select.dataset.choices !== key) {
+    select.dataset.choices = key;
+    select.replaceChildren();
+    let lastGroup;
+    for (const item of choices) {
+      const groupName = item.label.split(' · ')[0];
+      if (!lastGroup || lastGroup.label !== groupName) {
+        lastGroup = document.createElement('optgroup');
+        lastGroup.label = groupName;
+        select.appendChild(lastGroup);
+      }
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = shortLabel(item);
+      lastGroup.appendChild(option);
     }
-    const option = document.createElement('option');
-    option.value = item.id;
-    option.textContent = shortLabel(item);
-    lastGroup.appendChild(option);
   }
   select.value = feature.id;
-  const index = features.findIndex(item => item.id === feature.id);
+  const items = navigationFeatures();
+  const index = items.findIndex(item => item.id === feature.id);
   $('previous-layer').disabled = index === 0;
-  $('next-layer').disabled = index === features.length - 1;
+  $('next-layer').disabled = index === items.length - 1;
+}
+function navigationFeatures() {
+  return mobileMode.matches ? features.filter(feature => !feature.id.endsWith('_skip')) : features;
 }
 function makeSelectable(element, choose, label) {
   element.setAttribute('role', 'button');
@@ -619,9 +636,18 @@ function renderPreview() {
   $('channel-position').textContent = `${activeChannel + 1} / ${feature.channels}`;
   $('previous-channel').disabled = activeChannel === 0;
   $('next-channel').disabled = activeChannel === feature.channels - 1;
+  if (mobileMode.matches) $('pass-stage').querySelectorAll('[data-channel]').forEach(button =>
+    button.setAttribute('aria-pressed', String(Number(button.dataset.channel) === activeChannel)));
 }
 function selectChannel(index, reveal = false, showSelection = true) {
-  if (forwardPlaying) finishForwardPass();
+  if (mobilePlaying) {
+    const id = activeLayer;
+    pauseMobilePass();
+    const step = mobilePlan.findIndex(item => item.feature.id === id);
+    showMobileStep(step + 1, false, true, index).catch(error => { $('status').textContent = error.message; });
+    return;
+  }
+  else if (forwardPlaying) finishForwardPass();
   if (updatingSample || $('channels').parentElement.getAttribute('aria-busy') === 'true') return;
   selectionVisible = showSelection;
   activeChannel = index;
@@ -650,6 +676,15 @@ document.addEventListener('click', event => {
   dismissSelection();
 });
 async function selectLayer(id, resetChannel = true, channel = null) {
+  if (mobileMode.matches && $('explorer').dataset.mobilePhase === 'walk') {
+    const index = mobilePlan[mobileIndex - 1]?.feature.id === id
+      ? mobileIndex - 1 : mobilePlan.findIndex(step => step.feature.id === id);
+    if (index >= 0) {
+      pauseMobilePass();
+      await showMobileStep(index + 1, false, !resetChannel, channel);
+      return;
+    }
+  }
   if (forwardPlaying || forwardStep !== null) finishForwardPass();
   if (updatingSample || !features.length) return;
   selectionVisible = true;
@@ -680,7 +715,9 @@ async function selectLayer(id, resetChannel = true, channel = null) {
   if (version === selectionVersion) $('channels').parentElement.setAttribute('aria-busy', 'false');
 }
 function selectBlock(block) {
-  selectLayer(lastLayers.get(block) || features.find(feature => feature.block === block).id);
+  const items = navigationFeatures();
+  const saved = items.find(feature => feature.id === lastLayers.get(block));
+  selectLayer(saved?.id || items.find(feature => feature.block === block).id);
 }
 function renderMasks() {
   const opacity = Number($('opacity').value);
@@ -693,9 +730,9 @@ function renderMasks() {
   $('reference-figure').hidden = !reference;
   document.querySelector('.hero').classList.toggle('no-reference', !reference);
 }
-function showForwardFeature(feature, probability = false) {
+function showForwardFeature(feature, probability = false, channel = 0) {
   activeLayer = feature.id;
-  activeChannel = 0;
+  activeChannel = channel;
   selectionVisible = true;
   if (feature.has_sigmoid) sigmoidView = probability ? 'post' : 'pre';
   lastLayers.set(feature.block, feature.id);
@@ -706,6 +743,168 @@ function showForwardFeature(feature, probability = false) {
   $('channels').parentElement.setAttribute('aria-busy', 'false');
   renderPreview();
   $('explorer').classList.remove('forward-awaiting-feature');
+}
+
+function updateMobileControls() {
+  const phase = $('explorer').dataset.mobilePhase;
+  const complete = phase === 'walk' && mobileIndex === mobilePlan.length;
+  $('pass-progress').textContent = `${mobileIndex} / ${mobilePlan.length || 19}`;
+  $('pass-progress').setAttribute('aria-live', mobilePlaying ? 'off' : 'polite');
+  $('pass-previous').disabled = updatingSample || mobileIndex === 0;
+  $('pass-next').disabled = updatingSample || mobileIndex === mobilePlan.length;
+  $('pass-play').disabled = updatingSample || !mobilePlan.length;
+  $('pass-finish').disabled = updatingSample || !mobilePlan.length;
+  $('pass-play').setAttribute('aria-pressed', String(mobilePlaying));
+  $('pass-play').setAttribute('aria-label', mobilePlaying ? 'Pause forward pass'
+    : phase === 'result' ? 'Replay forward pass' : complete ? 'Compare results'
+    : reducedMotion.matches ? 'Next forward-pass step' : 'Play forward pass');
+  $('pass-play').querySelector('span').textContent = mobilePlaying ? 'Pause' : phase === 'result' ? 'Replay'
+    : complete ? 'Compare results' : reducedMotion.matches ? phase === 'ready' ? 'Step through' : 'Next step' : 'Forward pass';
+  $('pass-play').querySelector('path').setAttribute('d', mobilePlaying ? 'M7 5h3v14H7zM14 5h3v14h-3z' : 'M8 5v14l11-7z');
+}
+function pauseMobilePass() {
+  const wasPlaying = mobilePlaying;
+  ++forwardRun;
+  ++selectionVersion;
+  mobilePlaying = false;
+  forwardPlaying = false;
+  clearTimeout(mobileTimer);
+  if (mobileWake) { mobileWake(); mobileWake = null; }
+  for (const animation of forwardAnimations) animation.cancel();
+  forwardAnimations.clear();
+  const result = $('pass-stage').querySelector('.pass-result');
+  if (result) { result.style.opacity = '1'; result.style.transform = 'none'; result.inert = false; }
+  const step = mobilePlan[mobileIndex - 1];
+  if (wasPlaying && mobileMode.matches && step && !updatingSample &&
+      (activeLayer !== step.feature.id || (step.feature.has_sigmoid && sigmoidView !== step.view))) {
+    showForwardFeature(step.feature, step.view === 'post');
+  }
+  updateMobileControls();
+}
+function resetMobilePass() {
+  mobilePlan = mobileSteps(features);
+  mobileIndex = 0;
+  $('explorer').dataset.mobilePhase = 'ready';
+  $('pass-heading').textContent = 'From image to segmentation';
+  $('pass-input').src = inputUrl;
+  $('pass-reference').src = referenceUrl || inputUrl;
+  $('pass-reference-figure').hidden = !reference;
+  document.querySelector('.pass-start-note').innerText = reference
+    ? 'Follow the image through the network.\nThe reference mask is only for comparison.'
+    : 'Follow the image through the network.\nNo reference mask was provided.';
+  $('pass-ready').hidden = false;
+  $('pass-stage').hidden = true;
+  $('pass-note').textContent = '';
+  forwardStep = null;
+  updateMobileControls();
+}
+async function showMobileStep(index, animate = false, keepView = false, channel = null) {
+  if (!features.length || updatingSample) return;
+  if (index <= 0) { resetMobilePass(); return; }
+  const run = forwardRun, version = ++selectionVersion;
+  const step = mobilePlan[Math.min(index, mobilePlan.length) - 1];
+  const oldChannel = activeLayer === step.feature.id ? activeChannel : 0;
+  if (!keepView) activationView = 'post';
+  await prepareDiagramViews(features, args.data.encoding);
+  if (run !== forwardRun || version !== selectionVersion || !mobileMode.matches) return;
+  const previousImages = new Map();
+  const imageKey = image => `${image.dataset.tensor}:${image.dataset.view}:${image.dataset.mapChannel}`;
+  if (animate) {
+    const phase = $('explorer').dataset.mobilePhase;
+    if (phase === 'walk') $('pass-stage').querySelectorAll('.pass-result img').forEach(image =>
+      previousImages.set(imageKey(image), image.getBoundingClientRect()));
+    else previousImages.set('input:output:0', $(phase === 'ready' ? 'pass-input' : 'hero-input').getBoundingClientRect());
+  }
+  mobileIndex = index;
+  forwardStep = index;
+  $('explorer').dataset.mobilePhase = 'walk';
+  $('pass-heading').textContent = step.label;
+  $('pass-ready').hidden = true;
+  $('pass-stage').hidden = false;
+  $('pass-stage').dataset.step = step.id;
+  $('pass-stage').dataset.feature = step.feature.id;
+  renderMobileStep($('pass-stage'), step, features, channelImage, inputUrl, predictionUrl, selected => {
+    pauseMobilePass();
+    selectChannel(selected, true);
+  });
+  $('pass-note').textContent = step.note;
+  const output = $('pass-stage').querySelector('.pass-result');
+  output.inert = animate;
+  if (animate) output.style.opacity = '0';
+  updateMobileControls();
+  if (animate) {
+    const moving = [...$('pass-stage').querySelectorAll('.pass-inputs img')]
+      .filter(image => previousImages.has(imageKey(image)))
+      .map(image => ({image, from: previousImages.get(imageKey(image)), to: image.getBoundingClientRect()}));
+    await Promise.all(moving.map(({image, from, to}) => moveMobileImage(image, from, to)));
+  }
+  if (run !== forwardRun || version !== selectionVersion) return;
+  if (animate) await animateForward($('pass-stage').querySelector('.pass-operation-pill'), [{opacity: .35}, {opacity: 1}], 160);
+  if (run !== forwardRun || version !== selectionVersion) return;
+  const inspection = keepView && step.feature.has_sigmoid ? sigmoidView === 'post' : step.view === 'post';
+  showForwardFeature(step.feature, inspection, channel ?? (keepView ? oldChannel : 0));
+  if (channel !== null) selectChannel(channel, true);
+  output.inert = false;
+  if (animate && step.kind === 'concat') {
+    output.style.opacity = '1';
+    const sources = [...$('pass-stage').querySelectorAll('.pass-inputs img')].map(image => image.getBoundingClientRect());
+    const targets = [...output.querySelectorAll('img')].map(image => ({image, to: image.getBoundingClientRect()}));
+    await Promise.all(targets.map(({image, to}, index) => moveMobileImage(image, sources[index], to)));
+  } else if (animate) await animateForward(output, [{opacity: 0, transform: 'translateY(3px)'}, {opacity: 1, transform: 'translateY(0)'}], 200);
+}
+function moveMobileImage(image, from, to) {
+  image.style.transformOrigin = 'top left';
+  return animateForward(image, [
+    {opacity: .55, transform: `translate(${from.x - to.x}px, ${from.y - to.y}px) scale(${from.width / to.width}, ${from.height / to.height})`},
+    {opacity: 1, transform: 'translate(0, 0) scale(1)'}
+  ], 200);
+}
+function showMobileResults(keepSelection = false) {
+  pauseMobilePass();
+  mobileIndex = mobilePlan.length;
+  forwardStep = null;
+  $('explorer').dataset.mobilePhase = 'result';
+  $('pass-heading').textContent = 'Input and segmentation';
+  if (!keepSelection) showForwardFeature(features[features.length - 1], true);
+  renderMasks();
+  updateMobileControls();
+}
+async function stepMobilePass(direction) {
+  if (updatingSample || !mobilePlan.length) return;
+  pauseMobilePass();
+  const index = Math.max(0, Math.min(mobilePlan.length, mobileIndex + direction));
+  mobileIndex = index;
+  await showMobileStep(index);
+}
+async function playMobilePass() {
+  if (updatingSample || !mobilePlan.length) return;
+  pauseMobilePass();
+  if ($('explorer').dataset.mobilePhase === 'walk' && mobileIndex === mobilePlan.length) {
+    showMobileResults();
+    return;
+  }
+  const start = $('explorer').dataset.mobilePhase === 'result' ? 0 : mobileIndex;
+  if (reducedMotion.matches) {
+    await showMobileStep(start + 1);
+    return;
+  }
+  const run = forwardRun;
+  mobilePlaying = true;
+  forwardPlaying = true;
+  try {
+    for (let index = start + 1; index <= mobilePlan.length; index++) {
+      await showMobileStep(index, true);
+      if (run !== forwardRun || !mobileMode.matches) return;
+      await new Promise(resolve => {
+        mobileWake = resolve;
+        mobileTimer = setTimeout(() => { mobileWake = null; resolve(); }, mobilePlan[index - 1].kind === 'concat' ? 1100 : 650);
+      });
+      if (run !== forwardRun) return;
+    }
+    showMobileResults();
+  } catch (error) {
+    if (run === forwardRun) { pauseMobilePass(); $('status').textContent = error.message; }
+  }
 }
 function updateForwardControls() {
   const total = features.length + 1; // Tensor outputs, then sigmoid / binary prediction.
@@ -768,6 +967,7 @@ async function stepForward(direction) {
   } catch (error) { $('status').textContent = error.message; }
 }
 function finishForwardPass(showOutput = false) {
+  if (mobilePlaying) pauseMobilePass();
   ++forwardRun;
   forwardPlaying = false;
   forwardStep = null;
@@ -918,20 +1118,27 @@ function requestInput(action, extra = {}) {
 blocks.forEach(block => $('block').add(new Option(block, block)));
 $('block').onchange = () => selectBlock($('block').value);
 $('layer').onchange = () => selectLayer($('layer').value);
-$('previous-layer').onclick = () => selectLayer(features[features.findIndex(f => f.id === activeLayer) - 1].id);
-$('next-layer').onclick = () => selectLayer(features[features.findIndex(f => f.id === activeLayer) + 1].id);
+$('layer').addEventListener('focus', () => {
+  if (!mobilePlaying) return;
+  const index = mobilePlan.findIndex(step => step.feature.id === activeLayer);
+  pauseMobilePass();
+  showMobileStep(index + 1, false, true).catch(error => { $('status').textContent = error.message; });
+});
+$('previous-layer').onclick = () => selectLayer(navigationFeatures()[navigationFeatures().findIndex(f => f.id === activeLayer) - 1].id);
+$('next-layer').onclick = () => selectLayer(navigationFeatures()[navigationFeatures().findIndex(f => f.id === activeLayer) + 1].id);
 $('previous-channel').onclick = () => selectChannel(activeChannel - 1, true);
 $('next-channel').onclick = () => selectChannel(activeChannel + 1, true);
 for (const mode of ['uniform', 'native']) $(mode).onclick = () => { displaySize = mode; applyDisplaySize(); };
 for (const mode of ['pre', 'post']) $(`activation-${mode}`).onclick = async () => {
   const feature = currentFeature();
+  if (mobilePlaying) pauseMobilePass();
   if ((feature.has_sigmoid ? sigmoidView : activationView) === mode) return;
   const scroll = $('channels').parentElement;
   const position = scroll.scrollTop;
   if (feature.has_sigmoid) sigmoidView = mode;
   else activationView = mode;
   renderActivationControl(feature);
-  await selectLayer(activeLayer, false);
+  await selectLayer(feature.id, false);
   scroll.scrollTop = position;
 };
 $('simplified').onchange = () => {
@@ -953,6 +1160,22 @@ $('forward-toggle').onclick = () => {
   if (forwardPlaying) finishForwardPass(true);
   else playForwardPass().catch(error => { $('status').textContent = error.message; });
 };
+$('pass-play').onclick = () => {
+  if (mobilePlaying) {
+    pauseMobilePass();
+    showMobileStep(mobileIndex).catch(error => { $('status').textContent = error.message; });
+  } else playMobilePass().catch(error => { pauseMobilePass(); $('status').textContent = error.message; });
+};
+$('pass-previous').onclick = () => stepMobilePass(-1).catch(error => { $('status').textContent = error.message; });
+$('pass-next').onclick = () => stepMobilePass(1).catch(error => { $('status').textContent = error.message; });
+$('pass-finish').onclick = () => showMobileResults();
+reducedMotion.addEventListener('change', () => {
+  if (mobilePlaying && reducedMotion.matches) {
+    pauseMobilePass();
+    showMobileStep(mobileIndex).catch(error => { $('status').textContent = error.message; });
+  }
+  updateMobileControls();
+});
 function renderExamples(items, active) {
   if (!$('examples').children.length) {
     items.forEach(item => {
@@ -1024,6 +1247,8 @@ window.addEventListener('message', async event => {
     sampleId = args.sample_id;
     referenceSource = args.reference;
     features = args.data.features;
+    mobilePlan = mobileSteps(features);
+    lastLayers.clear();
     imageCache.clear();
     inputPixels = bytes(args.data.input);
     prediction = bytes(args.data.prediction);
@@ -1035,6 +1260,7 @@ window.addEventListener('message', async event => {
     activeLayer = 'enc_l1_conv1';
     activeChannel = 0;
     $('hero-input').src = inputUrl;
+    if (mobileMode.matches) resetMobilePass();
     updatingSample = false;
     setControlsDisabled(false);
     await selectLayer(activeLayer);
@@ -1042,7 +1268,10 @@ window.addEventListener('message', async event => {
     renderMasks();
     $('explorer').classList.remove('loading');
     $('explorer').setAttribute('aria-busy', 'false');
-    if (mobileMode.matches) $('explorer').classList.remove('forward-preparing');
+    if (mobileMode.matches) {
+      $('explorer').classList.remove('forward-preparing');
+      updateMobileControls();
+    }
     else playForwardPass().catch(error => { $('status').textContent = error.message; });
   }
   if (version !== sampleVersion) return;
@@ -1152,6 +1381,11 @@ const desktopLayerParent = layerControls.parentElement;
 const activationControl = $('activation');
 const desktopActivationParent = activationControl.parentElement;
 const summary = document.querySelector('.header > .summary');
+const inputTools = document.querySelector('.input-tools');
+const desktopInputParent = inputTools.parentElement;
+const architectureRow = document.querySelector('.architecture-row');
+const diagramToolbar = document.querySelector('.diagram-toolbar');
+const diagramFooter = document.querySelector('.diagram-footer');
 blocks.forEach(block => {
   const button = document.createElement('button');
   button.textContent = block;
@@ -1161,19 +1395,29 @@ blocks.forEach(block => {
   button.onclick = () => selectBlock(block);
   $('mobile-blocks').appendChild(button);
 });
-function applyResponsiveLayout() {
+async function applyResponsiveLayout() {
   if (forwardPlaying || forwardStep !== null) finishForwardPass();
+  document.querySelector('.hero').setAttribute('aria-label', mobileMode.matches ? 'Forward-pass walkthrough' : 'U-Net architecture');
   if (mobileMode.matches) {
+    if (features.length) $('explorer').dataset.mobilePhase = 'result';
+    $('mobile-result').append(architectureRow, diagramFooter);
+    $('mobile-sample-slot').appendChild(inputTools);
     $('mobile-layer-slot').appendChild(layerControls);
     $('mobile-activation-slot').appendChild(activationControl);
     $('mobile-model-details').appendChild(summary);
   } else {
+    diagramToolbar.before(architectureRow);
+    diagramToolbar.after(diagramFooter);
+    desktopInputParent.appendChild(inputTools);
     desktopLayerParent.prepend(layerControls);
     desktopActivationParent.prepend(activationControl);
     document.querySelector('.header').appendChild(summary);
   }
   if (features.length) {
-    selectLayer(activeLayer, false);
+    const id = mobileMode.matches && activeLayer.endsWith('_skip')
+      ? activeLayer.replace('dec_', 'enc_').replace('_skip', '_conv2') : activeLayer;
+    await selectLayer(id, false);
+    if (mobileMode.matches) showMobileResults(true);
     renderMasks();
   }
   updateHeight();
