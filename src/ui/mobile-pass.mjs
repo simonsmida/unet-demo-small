@@ -1,16 +1,22 @@
 // The teaching steps follow model.forward(). Saved skip tensors are references,
-// not additional computation. Convolutions include their real ReLU output.
+// not additional computation. Convolution and ReLU are separate tensor views.
 export function mobileSteps(features) {
   const stages = features.filter(feature => !feature.id.endsWith('_skip'));
-  const steps = stages.map((feature, index) => {
+  const steps = stages.flatMap((feature, index) => {
     const previous = stages[index - 1];
     const input = previous ? {id: previous.id, view: previous.has_relu ? 'post' : 'output', label: previous.label.replace('Convolution', 'Conv')}
       : {id: 'input', label: 'Input image'};
     const step = {id: feature.id, feature, inputs: [input], view: 'output',
-      label: feature.label.replace('Convolution', 'Conv'), operation: 'Conv + ReLU', kind: 'conv',
-      note: 'Each output channel combines the input channels. Shown after ReLU.',
+      label: feature.label.replace('Convolution', 'Conv'), operation: '3 × 3 Conv', kind: 'conv',
+      note: 'Each learned filter combines all input channels. These are the values before ReLU.',
       saved: /^enc_l[12]_conv2$/.test(feature.id)};
-    if (feature.has_relu) step.view = 'post';
+    if (feature.has_relu) return [
+      {...step, view: 'pre', saved: false},
+      {...step, id: `${feature.id}_relu`, view: 'post', kind: 'relu', operation: 'ReLU',
+        label: `${step.label} · ReLU`,
+        inputs: [{id: feature.id, view: 'pre', label: 'Convolution output'}],
+        note: 'ReLU replaces negative values with zero. Positive values and tensor dimensions stay unchanged.'}
+    ];
     else if (feature.id.startsWith('pool')) {
       step.operation = 'Max pooling'; step.kind = 'pool';
       step.note = 'Each 2 × 2 window keeps its largest value. Channel count stays the same.';
@@ -27,7 +33,7 @@ export function mobileSteps(features) {
       step.label = 'Output · Logits';
       step.note = 'One foreground logit per pixel. These values are not probabilities.';
     }
-    return step;
+    return [step];
   });
   const output = stages[stages.length - 1];
   steps.push({id: 'sigmoid', feature: output, inputs: [{id: output.id, view: 'pre', label: 'Logits'}],
@@ -47,50 +53,48 @@ function node(tag, className, text) {
 }
 
 // Every channel has its own real image. Overlapping sheets keep the full tensor
-// compact; the front sheet of each group is face-on and can be inspected.
+// compact; its front sheet is face-on and can be inspected.
 function tensor(label, feature, image, {result = false, select = null, role = '', view = 'output', split = null} = {}) {
   const card = node('div', `pass-tensor ${result ? 'pass-result-tensor' : ''} ${role}`);
+  card.dataset.tensor = feature?.id || 'input';
+  card.dataset.view = view;
   card.append(node('div', 'pass-tensor-label', label));
   const count = feature?.channels || 1;
   const height = feature?.height || 128, width = feature?.width || 128;
   card.append(node('div', 'pass-shape', `${count} ${count === 1 ? 'channel' : 'channels'} · ${width} × ${height}`));
   const maps = node('div', `pass-maps ${count === 1 ? 'single' : 'stacked'}`);
-  maps.setAttribute('aria-label', `${count} channels in original order${result && count > 1 && !split ? ', grouped for display' : ''}`);
-  const groups = split ? 2 : result && count > 1 ? 3 : 1;
-  for (let group = 0; group < groups; group++) {
-    const first = Math.floor(group * count / groups), end = Math.floor((group + 1) * count / groups);
-    const section = node('div', 'pass-stack-section');
-    const stack = node('div', 'pass-stack');
-    stack.style.setProperty('--sheets', end - first);
-    for (let channel = first; channel < end; channel++) {
-      const front = channel === end - 1;
-      const figure = node(select ? 'button' : 'figure', `pass-map ${front ? 'face' : ''}`);
-      figure.style.setProperty('--sheet', channel - first);
-      const img = node('img');
-      img.src = image(channel);
-      img.alt = feature ? `${label}, channel ${channel + 1}` : label;
-      img.dataset.tensor = feature?.id || 'input';
-      img.dataset.view = view;
-      img.dataset.mapChannel = String(channel);
-      img.width = width; img.height = height;
-      figure.append(img);
-      if (select) {
-        figure.type = 'button';
-        figure.dataset.channel = String(channel);
-        figure.setAttribute('aria-label', `Inspect channel ${channel + 1}`);
-        figure.setAttribute('aria-pressed', 'false');
-        figure.onclick = () => select(channel);
-        // The full-size grid below provides touch and keyboard access to every
-        // channel. Only unobscured front sheets are tab stops in the stack.
-        figure.tabIndex = front ? 0 : -1;
-      }
-      stack.append(figure);
+  maps.setAttribute('aria-label', `${count} channels in original order`);
+  const section = node('div', 'pass-stack-section');
+  const stack = node('div', 'pass-stack');
+  stack.style.setProperty('--sheets', count);
+  for (let channel = 0; channel < count; channel++) {
+    const front = channel === count - 1;
+    const figure = node(select ? 'button' : 'figure', `pass-map ${front ? 'face' : ''}`);
+    figure.style.setProperty('--sheet', channel);
+    const img = node('img');
+    img.src = image(channel);
+    img.alt = feature ? `${label}, channel ${channel + 1}` : label;
+    img.dataset.tensor = feature?.id || 'input';
+    img.dataset.view = view;
+    img.dataset.mapChannel = String(channel);
+    img.width = width; img.height = height;
+    figure.append(img);
+    if (select) {
+      figure.type = 'button';
+      figure.dataset.channel = String(channel);
+      figure.setAttribute('aria-label', `Inspect channel ${channel + 1}`);
+      figure.setAttribute('aria-pressed', 'false');
+      figure.onclick = () => select(channel);
+      // The full-size grid below provides touch and keyboard access to every
+      // channel. Only unobscured front sheets are tab stops in the stack.
+      figure.tabIndex = front ? 0 : -1;
     }
-    section.append(stack);
-    if (count > 1) section.append(node('div', 'pass-channel-range',
-      split ? `${split[group]} · ${end - first}` : `${first + 1}–${end}`));
-    maps.append(section);
+    stack.append(figure);
   }
+  section.append(stack);
+  if (split) section.append(node('div', 'pass-channel-range',
+    `${split[0]} · ${count / 2}  +  ${split[1]} · ${count / 2}`));
+  maps.append(section);
   card.append(maps);
   return card;
 }

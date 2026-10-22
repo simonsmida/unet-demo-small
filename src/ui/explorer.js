@@ -641,10 +641,10 @@ function renderPreview() {
 }
 function selectChannel(index, reveal = false, showSelection = true) {
   if (mobilePlaying) {
-    const id = activeLayer;
+    const id = activeLayer, view = viewName(currentFeature());
     pauseMobilePass();
-    const step = mobilePlan.findIndex(item => item.feature.id === id);
-    showMobileStep(step + 1, false, true, index).catch(error => { $('status').textContent = error.message; });
+    const step = mobilePlan.findIndex(item => item.feature.id === id && item.view === view);
+    showMobileStep(step + 1, false, false, index).catch(error => { $('status').textContent = error.message; });
     return;
   }
   else if (forwardPlaying) finishForwardPass();
@@ -677,8 +677,10 @@ document.addEventListener('click', event => {
 });
 async function selectLayer(id, resetChannel = true, channel = null) {
   if (mobileMode.matches && $('explorer').dataset.mobilePhase === 'walk') {
-    const index = mobilePlan[mobileIndex - 1]?.feature.id === id
-      ? mobileIndex - 1 : mobilePlan.findIndex(step => step.feature.id === id);
+    const view = features.find(feature => feature.id === id)?.has_sigmoid ? sigmoidView : activationView;
+    const index = !resetChannel
+      ? mobilePlan.findIndex(step => step.feature.id === id && step.view === view)
+      : mobilePlan.findIndex(step => step.feature.id === id);
     if (index >= 0) {
       pauseMobilePass();
       await showMobileStep(index + 1, false, !resetChannel, channel);
@@ -748,7 +750,7 @@ function showForwardFeature(feature, probability = false, channel = 0) {
 function updateMobileControls() {
   const phase = $('explorer').dataset.mobilePhase;
   const complete = phase === 'walk' && mobileIndex === mobilePlan.length;
-  $('pass-progress').textContent = `${mobileIndex} / ${mobilePlan.length || 19}`;
+  $('pass-progress').textContent = `${mobileIndex} / ${mobilePlan.length || 29}`;
   $('pass-progress').setAttribute('aria-live', mobilePlaying ? 'off' : 'polite');
   $('pass-previous').disabled = updatingSample || mobileIndex === 0;
   $('pass-next').disabled = updatingSample || mobileIndex === mobilePlan.length;
@@ -774,9 +776,12 @@ function pauseMobilePass() {
   forwardAnimations.clear();
   const result = $('pass-stage').querySelector('.pass-result');
   if (result) { result.style.opacity = '1'; result.style.transform = 'none'; result.inert = false; }
+  $('pass-stage').querySelectorAll('.pass-map').forEach(map => { map.style.opacity = '1'; map.style.translate = 'none'; });
   const step = mobilePlan[mobileIndex - 1];
   if (wasPlaying && mobileMode.matches && step && !updatingSample &&
-      (activeLayer !== step.feature.id || (step.feature.has_sigmoid && sigmoidView !== step.view))) {
+      (activeLayer !== step.feature.id || (step.feature.has_sigmoid && sigmoidView !== step.view) ||
+       (step.feature.has_relu && activationView !== step.view))) {
+    if (step.feature.has_relu) activationView = step.view;
     showForwardFeature(step.feature, step.view === 'post');
   }
   updateMobileControls();
@@ -804,17 +809,14 @@ async function showMobileStep(index, animate = false, keepView = false, channel 
   const run = forwardRun, version = ++selectionVersion;
   const step = mobilePlan[Math.min(index, mobilePlan.length) - 1];
   const oldChannel = activeLayer === step.feature.id ? activeChannel : 0;
-  if (!keepView) activationView = 'post';
+  if (!keepView) activationView = step.view === 'pre' ? 'pre' : 'post';
   await prepareDiagramViews(features, args.data.encoding);
   if (run !== forwardRun || version !== selectionVersion || !mobileMode.matches) return;
-  const previousImages = new Map();
-  const imageKey = image => `${image.dataset.tensor}:${image.dataset.view}:${image.dataset.mapChannel}`;
-  if (animate) {
-    const phase = $('explorer').dataset.mobilePhase;
-    if (phase === 'walk') $('pass-stage').querySelectorAll('.pass-result img').forEach(image =>
-      previousImages.set(imageKey(image), image.getBoundingClientRect()));
-    else previousImages.set('input:output:0', $(phase === 'ready' ? 'pass-input' : 'hero-input').getBoundingClientRect());
-  }
+  const previousStack = $('pass-stage').querySelector('.pass-result .pass-tensor');
+  const previous = animate && previousStack ? {
+    tensor: previousStack.dataset.tensor, view: previousStack.dataset.view,
+    bounds: previousStack.querySelector('.pass-stack').getBoundingClientRect()
+  } : animate ? {tensor: 'input', view: 'output', bounds: $('pass-input').getBoundingClientRect()} : null;
   mobileIndex = index;
   forwardStep = index;
   $('explorer').dataset.mobilePhase = 'walk';
@@ -832,11 +834,13 @@ async function showMobileStep(index, animate = false, keepView = false, channel 
   output.inert = animate;
   if (animate) output.style.opacity = '0';
   updateMobileControls();
-  if (animate) {
-    const moving = [...$('pass-stage').querySelectorAll('.pass-inputs .face img')]
-      .filter(image => previousImages.has(imageKey(image)))
-      .map(image => ({image, from: previousImages.get(imageKey(image)), to: image.getBoundingClientRect()}));
-    await Promise.all(moving.map(({image, from, to}) => moveMobileImage(image, from, to)));
+  if (animate && previous) {
+    const input = [...$('pass-stage').querySelectorAll('.pass-inputs .pass-tensor')]
+      .find(tensor => tensor.dataset.tensor === previous.tensor && tensor.dataset.view === previous.view);
+    if (input) {
+      const stack = input.querySelector('.pass-stack');
+      await moveMobileImage(stack, previous.bounds, stack.getBoundingClientRect());
+    }
   }
   if (run !== forwardRun || version !== selectionVersion) return;
   if (animate) await animateForward($('pass-stage').querySelector('.pass-operation-pill'), [{opacity: .35}, {opacity: 1}], 160);
@@ -844,20 +848,24 @@ async function showMobileStep(index, animate = false, keepView = false, channel 
   const inspection = keepView && step.feature.has_sigmoid ? sigmoidView === 'post' : step.view === 'post';
   showForwardFeature(step.feature, inspection, channel ?? (keepView ? oldChannel : 0));
   if (channel !== null) selectChannel(channel, true);
-  output.inert = false;
-  if (animate && step.kind === 'concat') {
+  if (animate) {
     output.style.opacity = '1';
-    const sources = [...$('pass-stage').querySelectorAll('.pass-inputs .pass-stack')].map(stack => stack.getBoundingClientRect());
-    const targets = [...output.querySelectorAll('.pass-stack')].map(image => ({image, to: image.getBoundingClientRect()}));
-    await Promise.all(targets.map(({image, to}, index) => moveMobileImage(image, sources[index], to)));
-  } else if (animate) await animateForward(output, [{opacity: 0, transform: 'translateY(3px)'}, {opacity: 1, transform: 'translateY(0)'}], 200);
+    const maps = [...output.querySelectorAll('.pass-map')];
+    maps.forEach(map => { map.style.opacity = '0'; });
+    // A bounded stagger shows channel order without implying serial GPU execution.
+    const interval = Math.min(55, 1200 / maps.length);
+    await Promise.all(maps.map((map, index) => animateForward(map,
+      [{opacity: 0, translate: '-10px 0'}, {opacity: 1, translate: '0 0'}],
+      220, index * interval)));
+  }
+  if (run === forwardRun && version === selectionVersion) output.inert = false;
 }
 function moveMobileImage(image, from, to) {
   image.style.transformOrigin = 'top left';
   return animateForward(image, [
-    {opacity: .55, transform: `translate(${from.x - to.x}px, ${from.y - to.y}px) scale(${from.width / to.width}, ${from.height / to.height})`},
+    {opacity: 1, transform: `translate(${from.x - to.x}px, ${from.y - to.y}px) scale(${from.width / to.width}, ${from.height / to.height})`},
     {opacity: 1, transform: 'translate(0, 0) scale(1)'}
-  ], 200);
+  ], 420);
 }
 function showMobileResults(keepSelection = false) {
   pauseMobilePass();
@@ -874,7 +882,7 @@ async function stepMobilePass(direction) {
   pauseMobilePass();
   const index = Math.max(0, Math.min(mobilePlan.length, mobileIndex + direction));
   mobileIndex = index;
-  await showMobileStep(index);
+  await showMobileStep(index, direction > 0 && !reducedMotion.matches);
 }
 async function playMobilePass() {
   if (updatingSample || !mobilePlan.length) return;
@@ -995,8 +1003,8 @@ function finishForwardPass(showOutput = false) {
   $('forward-toggle').querySelector('span').textContent = 'Forward pass';
   if (showOutput && features.length) showForwardFeature(features[features.length - 1], true);
 }
-async function animateForward(node, frames, duration) {
-  const animation = node.animate(frames, {duration, easing: 'ease-in-out', fill: 'forwards'});
+async function animateForward(node, frames, duration, delay = 0) {
+  const animation = node.animate(frames, {duration, delay, easing: 'ease-in-out', fill: 'forwards'});
   forwardAnimations.add(animation);
   let completed = false;
   try { await animation.finished; completed = true; }

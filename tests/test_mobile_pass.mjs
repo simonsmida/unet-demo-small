@@ -14,17 +14,17 @@ print(json.dumps([{key: feature[key] for key in keys} for feature in data['featu
 `], {cwd:root, env:{...process.env, PYTHONPATH:'src'}, encoding:'utf8'}));
 
 const plan = mobileSteps(features);
-assert.equal(plan.length, 19);
-assert.deepEqual(plan.slice(0,17).map(step => step.id), features.filter(feature => !feature.id.endsWith('_skip')).map(feature => feature.id));
+assert.equal(plan.length, 29);
+assert.deepEqual(plan.filter(step => !step.id.endsWith('_relu')).slice(0,17).map(step => step.id), features.filter(feature => !feature.id.endsWith('_skip')).map(feature => feature.id));
 assert.deepEqual(plan.slice(-3).map(step => step.id), ['final_conv', 'sigmoid', 'threshold']);
 assert.equal(plan[0].inputs[0].id, 'input');
 assert.equal(plan[0].feature.channels, 16);
-assert.equal(plan[0].view, 'post');
-assert.equal(plan[2].operation, 'Max pooling');
-assert.equal(plan[2].feature.width, 64);
-assert.equal(plan[7].feature.width, 32);
-assert.equal(plan[7].feature.channels, 64);
-assert.deepEqual(plan.filter(step => step.saved).map(step => step.id), ['enc_l1_conv2', 'enc_l2_conv2']);
+assert.equal(plan[0].view, 'pre');
+assert.equal(plan[4].operation, 'Max pooling');
+assert.equal(plan[4].feature.width, 64);
+assert.equal(plan[12].feature.width, 32);
+assert.equal(plan[12].feature.channels, 64);
+assert.deepEqual(plan.filter(step => step.saved).map(step => step.id), ['enc_l1_conv2_relu', 'enc_l2_conv2_relu']);
 for (const level of [2,1]) {
   const concat = plan.find(step => step.id === `dec_l${level}_concat`);
   assert.deepEqual(concat.inputs.map(source => source.id), [`dec_l${level}_deconv`, `enc_l${level}_conv2`]);
@@ -33,10 +33,25 @@ for (const level of [2,1]) {
   assert.equal(counts[0] + counts[1], concat.feature.channels);
   assert.equal(concat.kind, 'concat');
 }
-assert.equal(plan[16].view, 'pre');
-assert.equal(plan[17].inputs[0].view, 'pre');
-assert.equal(plan[17].view, 'post');
-assert.equal(plan[18].inputs[0].view, 'post');
-assert.equal(plan[18].binary, true);
+assert.equal(plan.at(-3).view, 'pre');
+assert.equal(plan.at(-2).inputs[0].view, 'pre');
+assert.equal(plan.at(-2).view, 'post');
+assert.equal(plan.at(-1).inputs[0].view, 'post');
+assert.equal(plan.at(-1).binary, true);
 assert(plan.every(step => step.inputs.every(source => source.id !== 'reference')));
 console.log('Mobile forward pass: real stage order, shapes, skip sources, activation views and output steps pass.');
+
+for (const feature of features.filter(feature => feature.has_relu)) {
+  const index = plan.findIndex(step => step.id === feature.id);
+  const conv = plan[index], relu = plan[index + 1];
+  assert.equal(conv.view, 'pre');
+  assert.equal(relu.kind, 'relu');
+  assert.equal(relu.view, 'post');
+  assert.equal(relu.inputs[0].id, conv.feature.id);
+  assert.equal(relu.inputs[0].view, 'pre');
+}
+for (let index = 1; index < plan.length; index++) {
+  const previous = plan[index - 1], input = plan[index].inputs[0];
+  assert.equal(input.id, previous.feature.id);
+  assert.equal(input.view, previous.view);
+}

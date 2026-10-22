@@ -87,16 +87,17 @@ in the reported validation score. The 18 thumbnail choices are a browsing subset
 
 On mobile, **Forward pass** opens a focused operation-by-operation walkthrough.
 The initial card shows the input and optional automatic reference only. Play or
-step through 19 stages, pause to inspect channels, or choose **Show prediction**.
+step through 29 stages, pause to inspect channels, or choose **Show prediction**.
 The final comparison shows input, binary prediction and the available reference.
 Manual stepping keeps the threshold stage open until **Compare results** is chosen.
 
-The mobile sequence omits display-only skip copies, groups each convolution with
-its ReLU, and separates logits, sigmoid and threshold 0.5. Concatenation shows both
+The mobile sequence omits display-only skip copies, follows each convolution with
+its own ReLU step, and separates logits, sigmoid and threshold 0.5. Concatenation shows both
 real source groups in tensor order (upsampled, then encoder), including channels
 from both halves. Every channel is rendered in compact overlapping stacks.
-Ordinary outputs are divided into three display groups with face-on front maps;
-concatenation keeps its two source groups. This grouping only changes the display.
+Every tensor is one continuous stack in channel order. Outputs are progressively
+revealed, then move into the next operation’s input position. This reveal order
+and timing illustrate data flow, not the hardware’s computation schedule.
 Copies reuse their source pixels and color scales.
 The full grid and selected preview follow the current tensor. Before/after
 activation inspection pauses playback; resuming uses actual post-ReLU inputs.
