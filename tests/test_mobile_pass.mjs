@@ -69,5 +69,5 @@ for (const level of [1, 2]) {
   assert.equal(up.height, coarse.height * 2);
   const concat = tensorGeometry(byId(`dec_l${level}_concat`));
   assert.equal(concat.width, up.width);
-  assert.equal(concat.depth + 1.5, (up.depth + 1.5) * 2);
+  assert.equal(concat.depth + 2.5, (up.depth + 2.5) * 2);
 }

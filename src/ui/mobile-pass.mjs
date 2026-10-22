@@ -58,7 +58,7 @@ export function tensorGeometry(feature) {
   const channels = feature?.channels || 1;
   const width = (feature?.width || 128) * 112 / 128;
   const height = (feature?.height || 128) * 112 / 128;
-  const depth = (channels - 1) * 1.5;
+  const depth = (channels - 1) * 2.5;
   return {width, height, depth, footprintWidth: .42 * width + depth,
     footprintHeight: .7 * height + .12 * width};
 }
@@ -139,5 +139,6 @@ export function renderMobileStep(container, step, features, image, inputUrl, pre
   caption.append(node('span', '', step.binary ? 'Binary mask' : step.id === 'sigmoid' ? 'Fixed 0–1 scale'
     : step.feature.channels === 1 ? 'Per-channel scale' : 'All channels · per-channel scale'));
   result.append(caption);
-  container.replaceChildren(inputs, operation, result);
+  container.classList.toggle('pass-upward', step.kind === 'up');
+  container.replaceChildren(...(step.kind === 'up' ? [result, operation, inputs] : [inputs, operation, result]));
 }
