@@ -95,7 +95,9 @@ The mobile sequence omits display-only skip copies, follows each convolution wit
 its own ReLU step, and separates logits, sigmoid and threshold 0.5. Concatenation shows both
 real source groups in tensor order (upsampled, then encoder), including channels
 from both halves. Every channel is rendered in compact overlapping stacks.
-Every tensor is one continuous stack in channel order. Outputs are progressively
+Every tensor is one continuous stack in channel order, using the desktop plane
+projection. Plane widths and heights scale directly with spatial resolution;
+each channel adds a fixed amount of depth. Outputs are progressively
 revealed, then move into the next operation’s input position. This reveal order
 and timing illustrate data flow, not the hardware’s computation schedule.
 Copies reuse their source pixels and color scales.

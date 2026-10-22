@@ -52,12 +52,25 @@ function node(tag, className, text) {
   return element;
 }
 
+// Same orthographic plane projection as the desktop SVG. A single scale is
+// shared by every tensor so pooling, upsampling and channel changes stay visible.
+export function tensorGeometry(feature) {
+  const channels = feature?.channels || 1;
+  const width = (feature?.width || 128) * 112 / 128;
+  const height = (feature?.height || 128) * 112 / 128;
+  const depth = (channels - 1) * 1.5;
+  return {width, height, depth, footprintWidth: .42 * width + depth,
+    footprintHeight: .7 * height + .12 * width};
+}
+
 // Every channel has its own real image. Overlapping sheets keep the full tensor
-// compact; its front sheet is face-on and can be inspected.
+// compact, with the same fixed projection and channel spacing throughout.
 function tensor(label, feature, image, {result = false, select = null, role = '', view = 'output', split = null} = {}) {
   const card = node('div', `pass-tensor ${result ? 'pass-result-tensor' : ''} ${role}`);
   card.dataset.tensor = feature?.id || 'input';
   card.dataset.view = view;
+  const geometry = tensorGeometry(feature);
+  for (const [name, value] of Object.entries(geometry)) card.style.setProperty(`--${name}`, `${value}px`);
   card.append(node('div', 'pass-tensor-label', label));
   const count = feature?.channels || 1;
   const height = feature?.height || 128, width = feature?.width || 128;
@@ -69,7 +82,7 @@ function tensor(label, feature, image, {result = false, select = null, role = ''
   stack.style.setProperty('--sheets', count);
   for (let channel = 0; channel < count; channel++) {
     const front = channel === count - 1;
-    const figure = node(select ? 'button' : 'figure', `pass-map ${front ? 'face' : ''}`);
+    const figure = node(select ? 'button' : 'figure', 'pass-map');
     figure.style.setProperty('--sheet', channel);
     const img = node('img');
     img.src = image(channel);

@@ -316,7 +316,7 @@ img { background: #eef2f7; }
 
 /* Mobile walkthrough: one stable card, backed by the same captured tensors. */
 @media (max-width: 650px) {
-  .hero { height: 520px; min-height: 520px; display: flex; flex-direction: column; gap: 10px; }
+  .hero { height: 575px; min-height: 575px; display: flex; flex-direction: column; gap: 10px; }
   .hero [hidden] { display: none !important; }
   .mobile-pass-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 22px; }
   .mobile-pass-heading h2 { font-size: 14px; line-height: 20px; }
@@ -336,16 +336,13 @@ img { background: #eef2f7; }
   .pass-tensor-label { font-size: 11px; line-height: 15px; font-weight: 600; color: #334155; }
   .pass-shape { font-size: 10px; color: #64748b; line-height: 16px; white-space: nowrap; }
   .pass-maps { display: flex; justify-content: center; align-items: start; gap: 12px; margin-top: 6px; }
-  .pass-stack-section { min-width: 0; flex: 1; max-width: 220px; }
-  .pass-stack { --face-size: 64px; position: relative; height: var(--face-size); width: 100%; }
-  .pass-map { position: absolute; top: 0; left: calc(var(--sheet) * (100% - var(--face-size)) / max(1, var(--sheets) - 1)); width: var(--face-size); margin: 0; padding: 0; background: #edf2f7; border: 0; border-radius: 2px; transform: perspective(180px) rotateY(-52deg); transform-origin: center; }
-  .pass-map.face { transform: none; }
-  .hero .pass-map img { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 2px; image-rendering: pixelated; box-shadow: -1px 0 0 white; }
+  .pass-stack-section { flex: 0 0 var(--footprintWidth); min-width: 0; }
+  .pass-stack { position: relative; height: var(--footprintHeight); width: var(--footprintWidth); }
+  .pass-map { position: absolute; top: calc(.12 * var(--width)); left: calc(var(--sheet) * 1.5px); width: var(--width); height: var(--height); margin: 0; padding: 0; background: #edf2f7; border: 0; border-radius: 1px; transform: matrix(.42, -.12, 0, .7, 0, 0); transform-origin: 0 0; }
+  .hero .pass-map img { display: block; width: 100%; height: 100%; border-radius: 1px; image-rendering: pixelated; box-shadow: -1px 0 0 white; }
   .pass-map[aria-pressed="true"] img { outline: 2px solid #f97316; outline-offset: 0; }
   .pass-map:focus-visible { outline: 2px solid #f97316; outline-offset: 2px; }
   .pass-channel-range { margin-top: 4px; font-size: 9px; line-height: 12px; color: #64748b; white-space: nowrap; }
-  .pass-maps.single .pass-stack-section { flex: 0 0 72px; }
-  .pass-maps.single .pass-stack { --face-size: 72px; }
   .skip-source { border-left: 1px solid #e2e8f0; padding-left: 10px; }
   .pass-operation { --operation-color: #25834b; position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; margin: 12px 0 14px; }
   .pass-operation::before { content: ''; position: absolute; top: -12px; left: calc(50% - 1px); height: 12px; width: 2px; background: #cbd5e1; }
@@ -359,9 +356,6 @@ img { background: #eef2f7; }
   .pass-operation.output { --operation-color: #2563eb; }
   .pass-join-count { position: absolute; left: calc(50% + 59px); width: min(75px, calc(50% - 61px)); font-size: 9px; line-height: 13px; color: #64748b; text-align: left; }
   .pass-result { min-height: 120px; }
-  .pass-inputs.pair .pass-stack { --face-size: 48px; }
-  .pass-result .single .pass-stack-section { flex-basis: 72px; }
-  .pass-result .single .pass-stack { --face-size: 72px; }
   .pass-result-caption { display: flex; justify-content: center; align-items: center; gap: 7px; min-height: 20px; margin-top: 4px; color: #64748b; font-size: 9px; }
   .pass-saved { padding: 2px 5px; color: #475569; background: #f1f5f9; border-radius: 4px; white-space: nowrap; }
   #pass-note { min-height: 32px; margin-top: 6px; color: #64748b; font-size: 11px; line-height: 16px; text-align: center; }
@@ -385,7 +379,7 @@ img { background: #eef2f7; }
   [data-mobile-phase="result"] #pass-finish { visibility: hidden; }
 }
 @media (max-width: 360px) {
-  .hero { height: 550px; min-height: 550px; }
+  .hero { height: 605px; min-height: 605px; }
   .mobile-pass-controls { grid-template-columns: 44px minmax(100px, 1fr) 44px; }
   #pass-finish { grid-column: 1 / -1; min-height: 24px; }
   .pass-join-count { font-size: 9px; }

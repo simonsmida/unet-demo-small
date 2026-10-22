@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {mobileSteps} from '../src/ui/mobile-pass.mjs';
+import {mobileSteps, tensorGeometry} from '../src/ui/mobile-pass.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const features = JSON.parse(execFileSync(process.env.PYTHON || 'python', ['-c', `
@@ -54,4 +54,20 @@ for (let index = 1; index < plan.length; index++) {
   const previous = plan[index - 1], input = plan[index].inputs[0];
   assert.equal(input.id, previous.feature.id);
   assert.equal(input.view, previous.view);
+}
+
+const byId = id => features.find(feature => feature.id === id);
+for (const level of [1, 2]) {
+  const input = tensorGeometry(byId(`enc_l${level}_conv2`));
+  const pooled = tensorGeometry(byId(`pool${level}`));
+  assert.equal(pooled.width, input.width / 2);
+  assert.equal(pooled.height, input.height / 2);
+  assert.equal(pooled.depth, input.depth);
+  const up = tensorGeometry(byId(`dec_l${level}_deconv`));
+  const coarse = tensorGeometry(byId(level === 2 ? 'bottleneck_conv2' : 'dec_l2_conv2'));
+  assert.equal(up.width, coarse.width * 2);
+  assert.equal(up.height, coarse.height * 2);
+  const concat = tensorGeometry(byId(`dec_l${level}_concat`));
+  assert.equal(concat.width, up.width);
+  assert.equal(concat.depth + 1.5, (up.depth + 1.5) * 2);
 }
