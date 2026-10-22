@@ -316,7 +316,7 @@ img { background: #eef2f7; }
 
 /* Mobile walkthrough: one stable card, backed by the same captured tensors. */
 @media (max-width: 650px) {
-  .hero { height: 480px; min-height: 480px; display: flex; flex-direction: column; gap: 10px; }
+  .hero { height: 520px; min-height: 520px; display: flex; flex-direction: column; gap: 10px; }
   .hero [hidden] { display: none !important; }
   .mobile-pass-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 22px; }
   .mobile-pass-heading h2 { font-size: 14px; line-height: 20px; }
@@ -328,29 +328,38 @@ img { background: #eef2f7; }
   .pass-start-note { color: #64748b; font-size: 12px; line-height: 1.6; text-align: center; }
   #pass-stage:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
   .pass-inputs { display: flex; align-items: start; justify-content: center; gap: 10px; min-height: 76px; }
+  .pass-inputs.pair { position: relative; padding-bottom: 10px; }
+  .pass-inputs.pair::after { content: ''; position: absolute; left: 25%; right: 25%; bottom: 0; height: 7px; border: solid #cbd5e1; border-width: 0 1px 1px; border-radius: 0 0 4px 4px; }
   .pass-inputs.pair > .pass-tensor { width: calc(50% - 5px); }
   .pass-tensor { min-width: 0; text-align: center; }
   .pass-tensor-label { font-size: 11px; line-height: 15px; font-weight: 600; color: #334155; }
   .pass-shape { font-size: 10px; color: #64748b; line-height: 16px; white-space: nowrap; }
-  .pass-maps { display: flex; justify-content: center; align-items: start; gap: 8px; margin-top: 5px; }
-  .pass-map { width: 42px; flex-shrink: 0; margin: 0; padding: 0; background: transparent; border: 0; border-radius: 3px; }
-  .hero .pass-map img { display: block; width: 100%; height: auto; border-radius: 2px; image-rendering: pixelated; }
+  .pass-maps { display: flex; justify-content: center; align-items: start; gap: 12px; margin-top: 6px; }
+  .pass-stack-section { min-width: 0; flex: 1; max-width: 110px; }
+  .pass-stack { --face-size: 46px; position: relative; height: var(--face-size); width: 100%; }
+  .pass-map { position: absolute; top: 0; left: calc(var(--sheet) * (100% - var(--face-size)) / max(1, var(--sheets) - 1)); width: var(--face-size); margin: 0; padding: 0; background: #edf2f7; border: 0; border-radius: 2px; transform: perspective(180px) rotateY(-52deg); transform-origin: center; }
+  .pass-map.face { transform: none; }
+  .hero .pass-map img { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 2px; image-rendering: pixelated; box-shadow: -1px 0 0 white; }
   .pass-map[aria-pressed="true"] img { outline: 2px solid #f97316; outline-offset: 0; }
-  .pass-channel-number { display: block; margin-top: 2px; color: #94a3b8; font-size: 9px; line-height: 10px; }
-  .pass-inputs .single .pass-map { width: 48px; }
+  .pass-map:focus-visible { outline: 2px solid #f97316; outline-offset: 2px; }
+  .pass-channel-range { margin-top: 4px; font-size: 9px; line-height: 12px; color: #64748b; white-space: nowrap; }
+  .pass-maps.single .pass-stack-section { flex: 0 0 48px; }
+  .pass-maps.single .pass-stack { --face-size: 48px; }
   .skip-source { border-left: 1px solid #e2e8f0; padding-left: 10px; }
-  .pass-operation { --operation-color: #25834b; position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; margin: 2px 0 6px; }
-  .pass-operation::before { content: ''; position: absolute; top: -5px; left: calc(50% - .5px); height: 6px; width: 1px; background: #cbd5e1; }
-  .pass-operation::after { content: ''; position: absolute; bottom: -4px; left: calc(50% - 3px); border-left: 3px solid transparent; border-right: 3px solid transparent; border-top: 4px solid #94a3b8; }
-  .pass-operation-pill { position: relative; overflow: hidden; padding: 4px 10px; border-radius: 6px; background: color-mix(in srgb, var(--operation-color) 8%, white); border: 1px solid color-mix(in srgb, var(--operation-color) 22%, white); color: var(--operation-color); font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .pass-operation { --operation-color: #25834b; position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; margin: 12px 0 14px; }
+  .pass-operation::before { content: ''; position: absolute; top: -12px; left: calc(50% - 1px); height: 12px; width: 2px; background: #cbd5e1; }
+  .pass-operation::after { content: ''; position: absolute; bottom: -12px; left: calc(50% - 4px); border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #94a3b8; }
+  .pass-operation-pill::after { content: ''; position: absolute; bottom: -8px; left: calc(50% - 1px); height: 8px; width: 2px; background: #cbd5e1; }
+  .pass-operation-pill { position: relative; overflow: visible; padding: 4px 10px; border-radius: 6px; background: color-mix(in srgb, var(--operation-color) 8%, white); border: 1px solid color-mix(in srgb, var(--operation-color) 22%, white); color: var(--operation-color); font-size: 11px; font-weight: 600; white-space: nowrap; }
   .pass-operation.pool { --operation-color: #c44444; }
   .pass-operation.up { --operation-color: #997715; }
   .pass-operation.concat { --operation-color: #64748b; }
   .pass-operation.output { --operation-color: #2563eb; }
-  .pass-join-count { font-size: 10px; color: #64748b; white-space: nowrap; }
-  .pass-result { min-height: 128px; }
-  .pass-result .pass-map { width: min(60px, calc((100vw - 90px) / 4)); }
-  .pass-result .single .pass-map { width: 80px; }
+  .pass-join-count { position: absolute; left: calc(50% + 59px); width: min(75px, calc(50% - 61px)); font-size: 9px; line-height: 13px; color: #64748b; text-align: left; }
+  .pass-result { min-height: 120px; }
+  .pass-result .pass-stack { --face-size: 54px; }
+  .pass-result .single .pass-stack-section { flex-basis: 72px; }
+  .pass-result .single .pass-stack { --face-size: 72px; }
   .pass-result-caption { display: flex; justify-content: center; align-items: center; gap: 7px; min-height: 20px; margin-top: 4px; color: #64748b; font-size: 9px; }
   .pass-saved { padding: 2px 5px; color: #475569; background: #f1f5f9; border-radius: 4px; white-space: nowrap; }
   #pass-note { min-height: 32px; margin-top: 6px; color: #64748b; font-size: 11px; line-height: 16px; text-align: center; }
@@ -374,7 +383,7 @@ img { background: #eef2f7; }
   [data-mobile-phase="result"] #pass-finish { visibility: hidden; }
 }
 @media (max-width: 360px) {
-  .hero { height: 510px; min-height: 510px; }
+  .hero { height: 550px; min-height: 550px; }
   .mobile-pass-controls { grid-template-columns: 44px minmax(100px, 1fr) 44px; }
   #pass-finish { grid-column: 1 / -1; min-height: 24px; }
   .pass-join-count { font-size: 9px; }

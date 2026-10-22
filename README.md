@@ -94,7 +94,10 @@ Manual stepping keeps the threshold stage open until **Compare results** is chos
 The mobile sequence omits display-only skip copies, groups each convolution with
 its ReLU, and separates logits, sigmoid and threshold 0.5. Concatenation shows both
 real source groups in tensor order (upsampled, then encoder), including channels
-from both halves. Thumbnail copies reuse their source pixels and color scales.
+from both halves. Every channel is rendered in compact overlapping stacks.
+Ordinary outputs are divided into three display groups with face-on front maps;
+concatenation keeps its two source groups. This grouping only changes the display.
+Copies reuse their source pixels and color scales.
 The full grid and selected preview follow the current tensor. Before/after
 activation inspection pauses playback; resuming uses actual post-ReLU inputs.
 Reference masks never enter the model. Playback uses the already computed tensors,

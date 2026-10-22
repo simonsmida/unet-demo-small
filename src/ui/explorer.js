@@ -833,7 +833,7 @@ async function showMobileStep(index, animate = false, keepView = false, channel 
   if (animate) output.style.opacity = '0';
   updateMobileControls();
   if (animate) {
-    const moving = [...$('pass-stage').querySelectorAll('.pass-inputs img')]
+    const moving = [...$('pass-stage').querySelectorAll('.pass-inputs .face img')]
       .filter(image => previousImages.has(imageKey(image)))
       .map(image => ({image, from: previousImages.get(imageKey(image)), to: image.getBoundingClientRect()}));
     await Promise.all(moving.map(({image, from, to}) => moveMobileImage(image, from, to)));
@@ -847,8 +847,8 @@ async function showMobileStep(index, animate = false, keepView = false, channel 
   output.inert = false;
   if (animate && step.kind === 'concat') {
     output.style.opacity = '1';
-    const sources = [...$('pass-stage').querySelectorAll('.pass-inputs img')].map(image => image.getBoundingClientRect());
-    const targets = [...output.querySelectorAll('img')].map(image => ({image, to: image.getBoundingClientRect()}));
+    const sources = [...$('pass-stage').querySelectorAll('.pass-inputs .pass-stack')].map(stack => stack.getBoundingClientRect());
+    const targets = [...output.querySelectorAll('.pass-stack')].map(image => ({image, to: image.getBoundingClientRect()}));
     await Promise.all(targets.map(({image, to}, index) => moveMobileImage(image, sources[index], to)));
   } else if (animate) await animateForward(output, [{opacity: 0, transform: 'translateY(3px)'}, {opacity: 1, transform: 'translateY(0)'}], 200);
 }

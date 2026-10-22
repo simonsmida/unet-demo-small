@@ -4,7 +4,7 @@ export function mobileSteps(features) {
   const stages = features.filter(feature => !feature.id.endsWith('_skip'));
   const steps = stages.map((feature, index) => {
     const previous = stages[index - 1];
-    const input = previous ? {id: previous.id, view: previous.has_relu ? 'post' : 'output', label: 'Input features'}
+    const input = previous ? {id: previous.id, view: previous.has_relu ? 'post' : 'output', label: previous.label.replace('Convolution', 'Conv')}
       : {id: 'input', label: 'Input image'};
     const step = {id: feature.id, feature, inputs: [input], view: 'output',
       label: feature.label.replace('Convolution', 'Conv'), operation: 'Conv + ReLU', kind: 'conv',
@@ -46,32 +46,50 @@ function node(tag, className, text) {
   return element;
 }
 
-function tensor(label, feature, channels, image, {result = false, select = null, role = '', view = 'output'} = {}) {
+// Every channel has its own real image. Overlapping sheets keep the full tensor
+// compact; the front sheet of each group is face-on and can be inspected.
+function tensor(label, feature, image, {result = false, select = null, role = '', view = 'output', split = null} = {}) {
   const card = node('div', `pass-tensor ${result ? 'pass-result-tensor' : ''} ${role}`);
   card.append(node('div', 'pass-tensor-label', label));
   const count = feature?.channels || 1;
   const height = feature?.height || 128, width = feature?.width || 128;
   card.append(node('div', 'pass-shape', `${count} ${count === 1 ? 'channel' : 'channels'} · ${width} × ${height}`));
-  const maps = node('div', `pass-maps ${channels.length === 1 ? 'single' : ''}`);
-  for (const channel of channels) {
-    const figure = node(select ? 'button' : 'figure', 'pass-map');
-    const img = node('img');
-    img.src = image(channel);
-    img.alt = feature ? `${label}, channel ${channel + 1}` : label;
-    img.dataset.tensor = feature?.id || 'input';
-    img.dataset.view = view;
-    img.dataset.mapChannel = String(channel);
-    img.width = width; img.height = height;
-    figure.append(img);
-    if (count > 1) figure.append(node('span', 'pass-channel-number', String(channel + 1)));
-    if (select) {
-      figure.type = 'button';
-      figure.dataset.channel = String(channel);
-      figure.setAttribute('aria-label', `Inspect channel ${channel + 1}`);
-      figure.setAttribute('aria-pressed', 'false');
-      figure.onclick = () => select(channel);
+  const maps = node('div', `pass-maps ${count === 1 ? 'single' : 'stacked'}`);
+  maps.setAttribute('aria-label', `${count} channels in original order${result && count > 1 && !split ? ', grouped for display' : ''}`);
+  const groups = split ? 2 : result && count > 1 ? 3 : 1;
+  for (let group = 0; group < groups; group++) {
+    const first = Math.floor(group * count / groups), end = Math.floor((group + 1) * count / groups);
+    const section = node('div', 'pass-stack-section');
+    const stack = node('div', 'pass-stack');
+    stack.style.setProperty('--sheets', end - first);
+    for (let channel = first; channel < end; channel++) {
+      const front = channel === end - 1;
+      const figure = node(select ? 'button' : 'figure', `pass-map ${front ? 'face' : ''}`);
+      figure.style.setProperty('--sheet', channel - first);
+      const img = node('img');
+      img.src = image(channel);
+      img.alt = feature ? `${label}, channel ${channel + 1}` : label;
+      img.dataset.tensor = feature?.id || 'input';
+      img.dataset.view = view;
+      img.dataset.mapChannel = String(channel);
+      img.width = width; img.height = height;
+      figure.append(img);
+      if (select) {
+        figure.type = 'button';
+        figure.dataset.channel = String(channel);
+        figure.setAttribute('aria-label', `Inspect channel ${channel + 1}`);
+        figure.setAttribute('aria-pressed', 'false');
+        figure.onclick = () => select(channel);
+        // The full-size grid below provides touch and keyboard access to every
+        // channel. Only unobscured front sheets are tab stops in the stack.
+        figure.tabIndex = front ? 0 : -1;
+      }
+      stack.append(figure);
     }
-    maps.append(figure);
+    section.append(stack);
+    if (count > 1) section.append(node('div', 'pass-channel-range',
+      split ? `${split[group]} · ${end - first}` : `${first + 1}–${end}`));
+    maps.append(section);
   }
   card.append(maps);
   return card;
@@ -81,8 +99,7 @@ export function renderMobileStep(container, step, features, image, inputUrl, pre
   const inputs = node('div', `pass-inputs ${step.inputs.length === 2 ? 'pair' : ''}`);
   for (const source of step.inputs) {
     const feature = features.find(item => item.id === source.id);
-    const channels = Array.from({length: Math.min(2, feature?.channels || 1)}, (_, index) => index);
-    inputs.append(tensor(source.label, feature, channels,
+    inputs.append(tensor(source.label, feature,
       channel => feature ? image(feature, channel, source.view) : inputUrl,
       {role: source.label === 'Encoder skip' ? 'skip-source' : '', view: source.view || 'output'}));
   }
@@ -94,20 +111,16 @@ export function renderMobileStep(container, step, features, image, inputUrl, pre
     operation.append(node('span', 'pass-join-count', `${first} + ${second} → ${step.feature.channels} channels`));
   }
   const result = node('div', 'pass-result');
-  let channels = Array.from({length: Math.min(4, step.feature.channels)}, (_, index) => index);
-  if (step.kind === 'concat') {
-    const half = step.feature.channels / 2;
-    channels = [0, 1, half, half + 1];
-  }
   const label = step.binary ? 'Prediction' : step.id === 'sigmoid' ? 'Probability'
     : step.feature.id === 'final_conv' ? 'Logits' : 'Output features';
-  result.append(tensor(label, step.feature, channels,
+  result.append(tensor(label, step.feature,
     channel => step.binary ? predictionUrl : image(step.feature, channel, step.view),
-    {result: true, select: step.binary ? null : select, view: step.binary ? 'binary' : step.view}));
+    {result: true, select: step.binary ? null : select, view: step.binary ? 'binary' : step.view,
+      split: step.kind === 'concat' ? ['Upsampled', 'Skip'] : null}));
   const caption = node('div', 'pass-result-caption');
   if (step.saved) caption.append(node('span', 'pass-saved', 'Saved for decoder'));
   caption.append(node('span', '', step.binary ? 'Binary mask' : step.id === 'sigmoid' ? 'Fixed 0–1 scale'
-    : `${channels.length} of ${step.feature.channels} ${step.feature.channels === 1 ? 'channel' : 'channels'} · per-channel scale`));
+    : step.feature.channels === 1 ? 'Per-channel scale' : 'All channels · per-channel scale'));
   result.append(caption);
   container.replaceChildren(inputs, operation, result);
 }
